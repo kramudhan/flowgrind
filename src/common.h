@@ -94,6 +94,7 @@ struct _flow_settings
 
 	int cork;
 	char cc_alg[256];
+	char ro_alg[256];
 	int elcn;
 	int icmp;
 	int dscp;

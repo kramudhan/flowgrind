@@ -178,6 +178,7 @@ struct _request_add_flow_source
 	/* The request reply */
 	int flow_id;
 	char cc_alg[256];
+	char ro_alg[256];
 	int real_send_buffer_size;
 	int real_read_buffer_size;
 };

@@ -1133,6 +1133,13 @@ int set_flow_tcp_options(struct _flow *flow)
 		return -1;
 	}
 
+	if (*flow->settings.ro_alg && set_reorder(
+				flow->fd, flow->settings.ro_alg) == -1) {
+		flow_error(flow, "Unable to set reorder algorithm: %s",
+				strerror(errno));
+		return -1;
+	}
+
 	if (flow->settings.elcn && set_so_elcn(flow->fd, flow->settings.elcn) == -1) {
 		flow_error(flow, "Unable to set TCP_ELCN: %s", strerror(errno));
 		return -1;

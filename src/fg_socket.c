@@ -203,6 +203,19 @@ int set_congestion_control(int fd, const char *cc_alg)
 #endif
 }
 
+int set_reorder(int fd, const char *ro_alg)
+{
+#ifdef __LINUX__
+	DEBUG_MSG(3, "Setting ro_alg=\"%s\" for fd %d", ro_alg, fd);
+	return setsockopt(fd, IPPROTO_TCP, TCP_REORDER_MODULE, ro_alg, strlen(ro_alg));
+#else
+	UNUSED_ARGUMENT(fd);
+	UNUSED_ARGUMENT(ro_alg);
+	DEBUG_MSG(2, "Cannot set ro_alg for OS other than Linux");
+	return -1;
+#endif
+}
+
 int set_so_elcn(int fd, int val)
 {
 #ifndef TCP_ELCN

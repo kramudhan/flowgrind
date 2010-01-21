@@ -128,6 +128,7 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 	char* destination_host = 0;
 	char* destination_host_reply = 0;
 	char* cc_alg = 0;
+	char* ro_alg = 0;
 	char* bind_address = 0;
 	xmlrpc_value* extra_options = 0;
 
@@ -140,7 +141,7 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 
 	/* Parse our argument array. */
 	xmlrpc_decompose_value(env, param_array, "("
-			"{s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:i,s:i,s:i,s:i,s:i,s:A,*}"
+			"{s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:s,s:i,s:i,s:i,s:i,s:i,s:A,*}"
 			"{s:s,s:s,s:i,s:i,s:i,*}"
 			")",
 
@@ -166,6 +167,7 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 		"byte_counting", &settings.byte_counting,
 		"cork", &settings.cork,
 		"cc_alg", &cc_alg,
+		"ro_alg", &ro_alg,
 		"elcn", &settings.elcn,
 		"icmp", &settings.icmp,
 		"dscp", &settings.dscp,
@@ -192,7 +194,7 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 		strlen(destination_host) >= sizeof(source_settings.destination_host) - 1||
 		strlen(destination_host_reply) >= sizeof(source_settings.destination_host_reply) - 1 ||
 		source_settings.destination_port <= 0 || source_settings.destination_port > 65535 ||
-		strlen(cc_alg) > 255 ||
+		strlen(cc_alg) > 255 || strlen(ro_alg) > 255 ||
 		settings.num_extra_socket_options < 0 || settings.num_extra_socket_options > MAX_EXTRA_SOCKET_OPTIONS ||
 		xmlrpc_array_size(env, extra_options) != settings.num_extra_socket_options ||
 		settings.dscp < 0 || settings.dscp > 255 ||
@@ -243,6 +245,7 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 	strcpy(source_settings.destination_host, destination_host);
 	strcpy(source_settings.destination_host_reply, destination_host_reply);
 	strcpy(settings.cc_alg, cc_alg);
+	strcpy(settings.ro_alg, ro_alg);
 	strcpy(settings.bind_address, bind_address);
 
 	request = malloc(sizeof(struct _request_add_flow_source));
@@ -255,9 +258,10 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 	}
 
 	/* Return our result. */
-	ret = xmlrpc_build_value(env, "{s:i,s:s,s:i,s:i}",
+	ret = xmlrpc_build_value(env, "{s:i,s:s,s:s,s:i,s:i}",
 		"flow_id", request->flow_id,
 		"cc_alg", request->cc_alg,
+		"ro_alg", request->ro_alg,
 		"real_send_buffer_size", request->real_send_buffer_size,
 		"real_read_buffer_size", request->real_read_buffer_size);
 
@@ -269,6 +273,7 @@ cleanup:
 	free(destination_host);
 	free(destination_host_reply);
 	free(cc_alg);
+	free(ro_alg);
 	free(bind_address);
 
 	if (extra_options)
@@ -292,6 +297,7 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 	int rc, i;
 	xmlrpc_value *ret = 0;
 	char* cc_alg = 0;
+	char* ro_alg = 0;
 	char* bind_address = 0;
 	xmlrpc_value* extra_options = 0;
 
@@ -303,7 +309,7 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 
 	/* Parse our argument array. */
 	xmlrpc_decompose_value(env, param_array,
-		"({s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:i,s:i,s:i,s:i,s:i,s:A,*})",
+		"({s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:s,s:i,s:i,s:i,s:i,s:i,s:A,*})",
 
 		/* general settings */
 		"bind_address", &bind_address,
@@ -327,6 +333,7 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 		"byte_counting", &settings.byte_counting,
 		"cork", &settings.cork,
 		"cc_alg", &cc_alg,
+		"ro_alg", &ro_alg,
 		"elcn", &settings.elcn,
 		"icmp", &settings.icmp,
 		"dscp", &settings.dscp,
@@ -344,7 +351,7 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 		settings.requested_send_buffer_size < 0 || settings.requested_read_buffer_size < 0 ||
 		settings.write_block_size <= 0 || settings.read_block_size <= 0 ||
 		settings.write_rate < 0 ||
-		strlen(cc_alg) > 255 ||
+		strlen(cc_alg) > 255 || strlen(ro_alg) > 255 ||
 		settings.num_extra_socket_options < 0 || settings.num_extra_socket_options > MAX_EXTRA_SOCKET_OPTIONS ||
 		xmlrpc_array_size(env, extra_options) != settings.num_extra_socket_options) {
 		XMLRPC_FAIL(env, XMLRPC_TYPE_ERROR, "Flow settings incorrect");
@@ -390,6 +397,7 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 	}
 
 	strcpy(settings.cc_alg, cc_alg);
+	strcpy(settings.ro_alg, ro_alg);
 	strcpy(settings.bind_address, bind_address);
 	request = malloc(sizeof(struct _request_add_flow_destination));
 	request->settings = settings;
@@ -413,6 +421,7 @@ cleanup:
 		free(request);
 	}
 	free(cc_alg);
+	free(ro_alg);
 	free(bind_address);
 
 	if (extra_options)

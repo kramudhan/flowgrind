@@ -5,7 +5,7 @@
 #include "config.h"
 #endif
 
-#include <netinet/tcp.h>
+#include "tcp.h"
 #include <sys/socket.h>
 
 #ifndef TCP_CONG_MODULE

@@ -508,7 +508,7 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 	while (report) {
 		xmlrpc_value *rv = xmlrpc_build_value(env, "{"
 			"s:i,s:i,s:i,s:i,s:i,s:i," "s:i,s:i,s:i,s:i,s:i," "s:d,s:d,s:d,s:d,s:d,s:d," "s:i,s:i,"
-			"s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i," /* TCP info */
+			"s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i," /* TCP info */
 			"s:i}",
 
 			"id", report->id,
@@ -541,6 +541,9 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 			"tcpi_lost", (int)report->tcp_info.tcpi_lost,
 			"tcpi_retrans", (int)report->tcp_info.tcpi_retrans,
 			"tcpi_retransmits", (int)report->tcp_info.tcpi_retransmits,
+			"tcpi_total_retrans", (int)report->tcp_info.tcpi_total_retrans,
+			"tcpi_total_fast_retrans", (int)report->tcp_info.tcpi_total_fast_retrans,
+			"tcpi_total_rto_retrans", (int)report->tcp_info.tcpi_total_rto_retrans,
 			"tcpi_fackets", (int)report->tcp_info.tcpi_fackets,
 			"tcpi_reordering", (int)report->tcp_info.tcpi_reordering,
 			"tcpi_rtt", (int)report->tcp_info.tcpi_rtt,
@@ -557,6 +560,9 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 			"tcpi_lost", 0,
 			"tcpi_retrans", 0,
 			"tcpi_retransmits", 0,
+			"tcpi_total_retrans", 0,
+			"tcpi_total_fast_retrans", 0,
+			"tcpi_total_rto_retrans", 0,
 			"tcpi_fackets", 0,
 			"tcpi_reordering", 0,
 			"tcpi_rtt", 0,

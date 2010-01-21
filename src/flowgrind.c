@@ -160,6 +160,9 @@ const struct _header_info header_info[] = {
 	{ " lost", " [#]", column_type_kernel },
 	{ " fret", " [#]", column_type_kernel },
 	{ " tret", " [#]", column_type_kernel },
+	{ " cret", " [#]", column_type_kernel },
+	{ " cfret", " [#]", column_type_kernel },
+	{ " ctret", " [#]", column_type_kernel },
 	{ " fack", " [#]", column_type_kernel },
 	{ " reor", " [#]", column_type_kernel },
 	{ " rtt", " [ms]", column_type_kernel },
@@ -304,7 +307,9 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 		double rttmin, double rttavg, double rttmax,
 		double iatmin, double iatavg, double iatmax,
 		int cwnd, int ssth, int uack, int sack, int lost, int reor,
-		unsigned int fret, unsigned int tret, unsigned int fack, double linrtt, double linrttvar,
+		unsigned int fret, unsigned int tret,
+		unsigned int totret, unsigned int totfret, unsigned int totrtoret,
+		unsigned int fack, double linrtt, double linrttvar,
 		double linrto, int ca_state, int mss, int mtu, char* comment, int unit_byte)
 {
 	int columnWidthChanged = 0; //Flag: 0: column width has not changed
@@ -395,6 +400,18 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 
 	//param str_tret
 	createOutputColumn(headerString1, headerString2, dataString, i, tret, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
+	//param str_totret
+	createOutputColumn(headerString1, headerString2, dataString, i, totret, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
+	//param str_totfret
+	createOutputColumn(headerString1, headerString2, dataString, i, totfret, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
+	//param str_totrtoret
+	createOutputColumn(headerString1, headerString2, dataString, i, totrtoret, &column_states[i], 0, &columnWidthChanged);
 	i++;
 
 	//param str_fack
@@ -756,6 +773,7 @@ void print_tcp_report_line(char hash, int id,
 #ifdef __LINUX__
 		unsigned cwnd, unsigned ssth, unsigned uack,
 		unsigned sack, unsigned lost, unsigned fret, unsigned tret,
+		unsigned totret, unsigned totfret, unsigned totrtoret,
 		unsigned fack, unsigned reor, double rtt,
 		double rttvar, double rto, int ca_state,
 		int mss, int mtu,
@@ -841,7 +859,7 @@ void print_tcp_report_line(char hash, int id,
 		min_rtt * 1e3, avg_rtt * 1e3, max_rtt * 1e3,
 		min_iat * 1e3, avg_iat * 1e3, max_iat * 1e3,
 #ifdef __LINUX__
-		(double)cwnd, (double)ssth, (double)uack, (double)sack, (double)lost, (double)reor, fret, tret, fack,
+		(double)cwnd, (double)ssth, (double)uack, (double)sack, (double)lost, (double)reor, fret, tret, totret, totfret, totrtoret, fack,
 		(double)rtt / 1e3, (double)rttvar / 1e3, (double)rto / 1e3, ca_state,
 #else
 		0, 0, 0, 0, 0, 0, 0, 0,
@@ -882,6 +900,9 @@ void print_report(int id, int endpoint, struct _report* report)
 		report->tcp_info.tcpi_lost,
 		report->tcp_info.tcpi_retrans,
 		report->tcp_info.tcpi_retransmits,
+		report->tcp_info.tcpi_total_retrans,
+		report->tcp_info.tcpi_total_fast_retrans,
+		report->tcp_info.tcpi_total_rto_retrans,
 		report->tcp_info.tcpi_fackets,
 		report->tcp_info.tcpi_reordering,
 		report->tcp_info.tcpi_rtt,
@@ -1231,6 +1252,9 @@ has_more_reports:
 					int tcpi_lost;
 					int tcpi_retrans;
 					int tcpi_retransmits;
+					int tcpi_total_retrans;
+					int tcpi_total_fast_retrans;
+					int tcpi_total_rto_retrans;
 					int tcpi_fackets;
 					int tcpi_reordering;
 					int tcpi_rtt;
@@ -1244,7 +1268,7 @@ has_more_reports:
 
 					xmlrpc_decompose_value(&rpc_env, rv, "{"
 						"s:i,s:i,s:i,s:i,s:i,s:i," "s:i,s:i,s:is:i,s:i," "s:d,s:d,s:d,s:d,s:d,s:d," "s:i,s:i,"
-						"s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i," /* TCP info */
+						"s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i," /* TCP info */
 						"s:i,*}",
 
 						"id", &report.id,
@@ -1277,6 +1301,9 @@ has_more_reports:
 						"tcpi_lost", &tcpi_lost,
 						"tcpi_retrans", &tcpi_retrans,
 						"tcpi_retransmits", &tcpi_retransmits,
+						"tcpi_total_retrans", &tcpi_total_retrans,
+						"tcpi_total_fast_retrans", &tcpi_total_fast_retrans,
+						"tcpi_total_rto_retrans", &tcpi_total_rto_retrans,
 						"tcpi_fackets", &tcpi_fackets,
 						"tcpi_reordering", &tcpi_reordering,
 						"tcpi_rtt", &tcpi_rtt,
@@ -1300,6 +1327,9 @@ has_more_reports:
 					report.tcp_info.tcpi_lost = tcpi_lost;
 					report.tcp_info.tcpi_retrans = tcpi_retrans;
 					report.tcp_info.tcpi_retransmits = tcpi_retransmits;
+					report.tcp_info.tcpi_total_retrans = tcpi_total_retrans;
+					report.tcp_info.tcpi_total_fast_retrans = tcpi_total_fast_retrans;
+					report.tcp_info.tcpi_total_rto_retrans = tcpi_total_rto_retrans;
 					report.tcp_info.tcpi_fackets = tcpi_fackets;
 					report.tcp_info.tcpi_reordering = tcpi_reordering;
 					report.tcp_info.tcpi_rtt = tcpi_rtt;

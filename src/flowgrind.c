@@ -160,15 +160,15 @@ const struct _header_info header_info[] = {
 	{ " lost", " [#]", column_type_kernel },
 	{ " fret", " [#]", column_type_kernel },
 	{ " tret", " [#]", column_type_kernel },
-	{ " cret", " [#]", column_type_kernel },
-	{ " cfret", " [#]", column_type_kernel },
-	{ " ctret", " [#]", column_type_kernel },
 	{ " fack", " [#]", column_type_kernel },
 	{ " reor", " [#]", column_type_kernel },
 	{ " rtt", " [ms]", column_type_kernel },
 	{ " rttvar", " [ms]", column_type_kernel },
 	{ " rto", " [ms]", column_type_kernel },
 	{ " castate", " ", column_type_kernel },
+	{ " cret", " [#]", column_type_kernel },
+	{ " cfret", " [#]", column_type_kernel },
+	{ " ctret", " [#]", column_type_kernel },
 	{ " mss", " [B]", column_type_kernel },
 	{ " mtu", " [B]", column_type_kernel },
 	{ " status", " ", column_type_other }
@@ -402,18 +402,6 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 	createOutputColumn(headerString1, headerString2, dataString, i, tret, &column_states[i], 0, &columnWidthChanged);
 	i++;
 
-	//param str_totret
-	createOutputColumn(headerString1, headerString2, dataString, i, totret, &column_states[i], 0, &columnWidthChanged);
-	i++;
-
-	//param str_totfret
-	createOutputColumn(headerString1, headerString2, dataString, i, totfret, &column_states[i], 0, &columnWidthChanged);
-	i++;
-
-	//param str_totrtoret
-	createOutputColumn(headerString1, headerString2, dataString, i, totrtoret, &column_states[i], 0, &columnWidthChanged);
-	i++;
-
 	//param str_fack
 	createOutputColumn(headerString1, headerString2, dataString, i, fack, &column_states[i], 0, &columnWidthChanged);
 	i++;
@@ -450,6 +438,18 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 	else
 		strcpy(tmp, "none");
 	
+	//param str_totret
+	createOutputColumn(headerString1, headerString2, dataString, i, totret, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
+	//param str_totfret
+	createOutputColumn(headerString1, headerString2, dataString, i, totfret, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
+	//param str_totrtoret
+	createOutputColumn(headerString1, headerString2, dataString, i, totrtoret, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
 	createOutputColumn_str(headerString1, headerString2, dataString, i, tmp, &column_states[i], &columnWidthChanged);
 	i++;
 
@@ -859,11 +859,11 @@ void print_tcp_report_line(char hash, int id,
 		min_rtt * 1e3, avg_rtt * 1e3, max_rtt * 1e3,
 		min_iat * 1e3, avg_iat * 1e3, max_iat * 1e3,
 #ifdef __LINUX__
-		(double)cwnd, (double)ssth, (double)uack, (double)sack, (double)lost, (double)reor, fret, tret, totret, totfret, totrtoret, fack,
-		(double)rtt / 1e3, (double)rttvar / 1e3, (double)rto / 1e3, ca_state,
+		(double)cwnd, (double)ssth, (double)uack, (double)sack, (double)lost, (double)reor, fret, tret, fack,
+		(double)rtt / 1e3, (double)rttvar / 1e3, (double)rto / 1e3, ca_state, totret, totfret, totrtoret,
 #else
-		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0,
 #endif
 		mss, mtu, comment_buffer, opt.mbyte
 	));
@@ -900,15 +900,15 @@ void print_report(int id, int endpoint, struct _report* report)
 		report->tcp_info.tcpi_lost,
 		report->tcp_info.tcpi_retrans,
 		report->tcp_info.tcpi_retransmits,
-		report->tcp_info.tcpi_total_retrans,
-		report->tcp_info.tcpi_total_fast_retrans,
-		report->tcp_info.tcpi_total_rto_retrans,
 		report->tcp_info.tcpi_fackets,
 		report->tcp_info.tcpi_reordering,
 		report->tcp_info.tcpi_rtt,
 		report->tcp_info.tcpi_rttvar,
 		report->tcp_info.tcpi_rto,
 		report->tcp_info.tcpi_ca_state,
+		report->tcp_info.tcpi_total_retrans,
+		report->tcp_info.tcpi_total_fast_retrans,
+		report->tcp_info.tcpi_total_rto_retrans,
 #endif
 		report->mss,
 		report->mtu,
@@ -1252,9 +1252,6 @@ has_more_reports:
 					int tcpi_lost;
 					int tcpi_retrans;
 					int tcpi_retransmits;
-					int tcpi_total_retrans;
-					int tcpi_total_fast_retrans;
-					int tcpi_total_rto_retrans;
 					int tcpi_fackets;
 					int tcpi_reordering;
 					int tcpi_rtt;
@@ -1263,6 +1260,9 @@ has_more_reports:
 					int tcpi_last_data_sent;
 					int tcpi_last_ack_recv;
 					int tcpi_ca_state;
+					int tcpi_total_retrans;
+					int tcpi_total_fast_retrans;
+					int tcpi_total_rto_retrans;
 					int bytes_read_low, bytes_read_high;
 					int bytes_written_low, bytes_written_high;
 
@@ -1301,9 +1301,6 @@ has_more_reports:
 						"tcpi_lost", &tcpi_lost,
 						"tcpi_retrans", &tcpi_retrans,
 						"tcpi_retransmits", &tcpi_retransmits,
-						"tcpi_total_retrans", &tcpi_total_retrans,
-						"tcpi_total_fast_retrans", &tcpi_total_fast_retrans,
-						"tcpi_total_rto_retrans", &tcpi_total_rto_retrans,
 						"tcpi_fackets", &tcpi_fackets,
 						"tcpi_reordering", &tcpi_reordering,
 						"tcpi_rtt", &tcpi_rtt,
@@ -1312,6 +1309,9 @@ has_more_reports:
 						"tcpi_last_data_sent", &tcpi_last_data_sent,
 						"tcpi_last_ack_recv", &tcpi_last_ack_recv,
 						"tcpi_ca_state", &tcpi_ca_state,
+						"tcpi_total_retrans", &tcpi_total_retrans,
+						"tcpi_total_fast_retrans", &tcpi_total_fast_retrans,
+						"tcpi_total_rto_retrans", &tcpi_total_rto_retrans,
 
 						"status", &report.status
 					);
@@ -1327,9 +1327,6 @@ has_more_reports:
 					report.tcp_info.tcpi_lost = tcpi_lost;
 					report.tcp_info.tcpi_retrans = tcpi_retrans;
 					report.tcp_info.tcpi_retransmits = tcpi_retransmits;
-					report.tcp_info.tcpi_total_retrans = tcpi_total_retrans;
-					report.tcp_info.tcpi_total_fast_retrans = tcpi_total_fast_retrans;
-					report.tcp_info.tcpi_total_rto_retrans = tcpi_total_rto_retrans;
 					report.tcp_info.tcpi_fackets = tcpi_fackets;
 					report.tcp_info.tcpi_reordering = tcpi_reordering;
 					report.tcp_info.tcpi_rtt = tcpi_rtt;
@@ -1338,6 +1335,9 @@ has_more_reports:
 					report.tcp_info.tcpi_last_data_sent = tcpi_last_data_sent;
 					report.tcp_info.tcpi_last_ack_recv = tcpi_last_ack_recv;
 					report.tcp_info.tcpi_ca_state = tcpi_ca_state;
+					report.tcp_info.tcpi_total_retrans = tcpi_total_retrans;
+					report.tcp_info.tcpi_total_fast_retrans = tcpi_total_fast_retrans;
+					report.tcp_info.tcpi_total_rto_retrans = tcpi_total_rto_retrans;
 #endif
 					report.begin.tv_sec = begin_sec;
 					report.begin.tv_usec = begin_usec;

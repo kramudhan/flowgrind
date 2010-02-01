@@ -308,9 +308,10 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 		double iatmin, double iatavg, double iatmax,
 		int cwnd, int ssth, int uack, int sack, int lost, int reor,
 		unsigned int fret, unsigned int tret,
-		unsigned int totret, unsigned int totfret, unsigned int totrtoret,
 		unsigned int fack, double linrtt, double linrttvar,
-		double linrto, int ca_state, int mss, int mtu, char* comment, int unit_byte)
+		double linrto, int ca_state,
+		unsigned int totret, unsigned int totfret, unsigned int totrtoret,
+		int mss, int mtu, char* comment, int unit_byte)
 {
 	int columnWidthChanged = 0; //Flag: 0: column width has not changed
 
@@ -438,6 +439,9 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 	else
 		strcpy(tmp, "none");
 	
+	createOutputColumn_str(headerString1, headerString2, dataString, i, tmp, &column_states[i], &columnWidthChanged);
+	i++;
+
 	//param str_totret
 	createOutputColumn(headerString1, headerString2, dataString, i, totret, &column_states[i], 0, &columnWidthChanged);
 	i++;
@@ -448,9 +452,6 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 
 	//param str_totrtoret
 	createOutputColumn(headerString1, headerString2, dataString, i, totrtoret, &column_states[i], 0, &columnWidthChanged);
-	i++;
-
-	createOutputColumn_str(headerString1, headerString2, dataString, i, tmp, &column_states[i], &columnWidthChanged);
 	i++;
 
 	createOutputColumn(headerString1, headerString2, dataString, i, mss, &column_states[i], 0, &columnWidthChanged);
@@ -773,9 +774,9 @@ void print_tcp_report_line(char hash, int id,
 #ifdef __LINUX__
 		unsigned cwnd, unsigned ssth, unsigned uack,
 		unsigned sack, unsigned lost, unsigned fret, unsigned tret,
-		unsigned totret, unsigned totfret, unsigned totrtoret,
 		unsigned fack, unsigned reor, double rtt,
 		double rttvar, double rto, int ca_state,
+		unsigned totret, unsigned totfret, unsigned totrtoret,
 		int mss, int mtu,
 #endif
 		int status

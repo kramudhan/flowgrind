@@ -669,6 +669,7 @@ void init_flows_defaults(void)
 			flow[id].settings[i].cork = 0;
 			flow[id].settings[i].cc_alg[0] = 0;
 			flow[id].settings[i].ro_alg[0] = 0;
+			flow[id].settings[i].ro_mode = 1;
 			flow[id].settings[i].elcn = 0;
 			flow[id].settings[i].icmp = 0;
 			flow[id].settings[i].so_debug = 0;
@@ -1495,7 +1496,7 @@ void prepare_flow(int id, xmlrpc_client *rpc_client)
 	}
 
 	xmlrpc_client_call2f(&rpc_env, rpc_client, flow[id].endpoint_options[DESTINATION].server_url, "add_flow_destination", &resultP,
-		"({s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:s,s:i,s:i,s:i,s:i,s:i,s:A})",
+		"({s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:s,s:i,s:i,s:i,s:i,s:i,s:i,s:A})",
 
 		/* general flow settings */
 		"bind_address", flow[id].endpoint_options[DESTINATION].bind_address,
@@ -1520,6 +1521,7 @@ void prepare_flow(int id, xmlrpc_client *rpc_client)
 		"cork", (int)flow[id].settings[DESTINATION].cork,
 		"cc_alg", flow[id].settings[DESTINATION].cc_alg,
 		"ro_alg", flow[id].settings[DESTINATION].ro_alg,
+		"ro_mode", flow[id].settings[DESTINATION].ro_mode,
 		"elcn", flow[id].settings[DESTINATION].elcn,
 		"icmp", flow[id].settings[DESTINATION].icmp,
 		"dscp", (int)flow[id].settings[DESTINATION].dscp,
@@ -1559,7 +1561,7 @@ void prepare_flow(int id, xmlrpc_client *rpc_client)
 	}
 
 	xmlrpc_client_call2f(&rpc_env, rpc_client, flow[id].endpoint_options[SOURCE].server_url, "add_flow_source", &resultP,
-		"({s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:s,s:i,s:i,s:i,s:i,s:i,s:A}"
+		"({s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:s,s:i,s:i,s:i,s:i,s:i,s:i,s:A}"
 		"{s:s,s:s,s:i,s:i,s:i})",
 
 		/* general flow settings */
@@ -1585,6 +1587,7 @@ void prepare_flow(int id, xmlrpc_client *rpc_client)
 		"cork", (int)flow[id].settings[SOURCE].cork,
 		"cc_alg", flow[id].settings[SOURCE].cc_alg,
 		"ro_alg", flow[id].settings[SOURCE].ro_alg,
+		"ro_mode", flow[id].settings[SOURCE].ro_mode,
 		"elcn", flow[id].settings[SOURCE].elcn,
 		"icmp", flow[id].settings[SOURCE].icmp,
 		"dscp", (int)flow[id].settings[SOURCE].dscp,
@@ -1869,6 +1872,30 @@ static void parse_flow_option(int ch, char* optarg, int current_flow_ids[]) {
 						strcpy(flow[current_flow_ids[id]].settings[DESTINATION].PROPERTY_NAME, (PROPERTY_VALUE)); \
 				} \
 			}
+	#define ASSIGN_COMMON_FLOW_SETTING_ATOI(PROPERTY_NAME, PROPERTY_VALUE) \
+			if (current_flow_ids[0] == -1) { \
+				int id; \
+				for (id = 0; id < MAX_FLOWS; id++) { \
+					if (type != 'd') \
+						flow[id].settings[SOURCE].PROPERTY_NAME = \
+						atoi((PROPERTY_VALUE)); \
+					if (type != 's') \
+						flow[id].settings[DESTINATION].PROPERTY_NAME = \
+						atoi((PROPERTY_VALUE)); \
+				} \
+			} else { \
+				int id; \
+				for (id = 0; id < MAX_FLOWS; id++) { \
+					if (current_flow_ids[id] == -1) \
+						break; \
+					if (type != 'd') \
+						flow[current_flow_ids[id]].settings[SOURCE].PROPERTY_NAME = \
+						atoi((PROPERTY_VALUE)); \
+					if (type != 's') \
+						flow[current_flow_ids[id]].settings[DESTINATION].PROPERTY_NAME = \
+						atoi((PROPERTY_VALUE)); \
+				} \
+			}
 	for (token = strtok(optarg, ","); token; token = strtok(NULL, ",")) {
 		type = token[0];
 		if (token[1] == '=')
@@ -1998,10 +2025,13 @@ static void parse_flow_option(int ch, char* optarg, int current_flow_ids[]) {
 				}
 				else if (!memcmp(arg, "TCP_REORDER_MODULE=", 19)) {
 					if (strlen(arg + 19) >= sizeof(flow[0].settings[SOURCE].ro_alg)) {
-						fprintf(stderr, "Too large string for TCP_REORDER_MODULE value");
+						fprintf(stderr, "Too large string for TCP_REORDER_MODE value");
 						usage_sockopt();
 					}
 					ASSIGN_COMMON_FLOW_SETTING_STR(ro_alg, arg + 19);
+				}
+				else if (!memcmp(arg, "TCP_REORDER_MODE=", 17)) {
+					ASSIGN_COMMON_FLOW_SETTING_ATOI(ro_mode, arg + 17);
 				}
 				else if (!strcmp(arg, "SO_DEBUG")) {
 					ASSIGN_COMMON_FLOW_SETTING(so_debug, 1);

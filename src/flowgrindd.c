@@ -141,7 +141,7 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 
 	/* Parse our argument array. */
 	xmlrpc_decompose_value(env, param_array, "("
-			"{s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:s,s:i,s:i,s:i,s:i,s:i,s:A,*}"
+			"{s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:s,s:i,s:i,s:i,s:i,s:i,s:i,s:A,*}"
 			"{s:s,s:s,s:i,s:i,s:i,*}"
 			")",
 
@@ -168,6 +168,7 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 		"cork", &settings.cork,
 		"cc_alg", &cc_alg,
 		"ro_alg", &ro_alg,
+		"ro_mode", &settings.ro_mode,
 		"elcn", &settings.elcn,
 		"icmp", &settings.icmp,
 		"dscp", &settings.dscp,
@@ -309,7 +310,7 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 
 	/* Parse our argument array. */
 	xmlrpc_decompose_value(env, param_array,
-		"({s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:s,s:i,s:i,s:i,s:i,s:i,s:A,*})",
+		"({s:s,s:d,s:d,s:d,s:d,s:d,s:i,s:i,s:i,s:i,s:b,s:b,s:b,s:b,s:b,s:i,s:b,s:b,s:i,s:i,s:s,s:s,s:i,s:i,s:i,s:i,s:i,s:i,s:A,*})",
 
 		/* general settings */
 		"bind_address", &bind_address,
@@ -334,6 +335,7 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 		"cork", &settings.cork,
 		"cc_alg", &cc_alg,
 		"ro_alg", &ro_alg,
+		"ro_mode", &settings.ro_mode,
 		"elcn", &settings.elcn,
 		"icmp", &settings.icmp,
 		"dscp", &settings.dscp,

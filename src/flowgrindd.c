@@ -510,7 +510,7 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 	while (report) {
 		xmlrpc_value *rv = xmlrpc_build_value(env, "{"
 			"s:i,s:i,s:i,s:i,s:i,s:i," "s:i,s:i,s:i,s:i,s:i," "s:d,s:d,s:d,s:d,s:d,s:d," "s:i,s:i,"
-			"s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i," /* TCP info */
+			"s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i," /* TCP info */
 			"s:i}",
 
 			"id", report->id,
@@ -554,6 +554,7 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 			"tcpi_total_retrans", (int)report->tcp_info.tcpi_total_retrans,
 			"tcpi_total_fast_retrans", (int)report->tcp_info.tcpi_total_fast_retrans,
 			"tcpi_total_rto_retrans", (int)report->tcp_info.tcpi_total_rto_retrans,
+			"tcpi_dupthresh", (int)report->tcp_info.tcpi_dupthresh,
 #else
 			"tcpi_snd_cwnd", 0,
 			"tcpi_snd_ssthresh", 0,
@@ -573,6 +574,7 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 			"tcpi_total_retrans", 0,
 			"tcpi_total_fast_retrans", 0,
 			"tcpi_total_rto_retrans", 0,
+			"tcpi_dupthresh", 0
 #endif
 
 			"status", report->status

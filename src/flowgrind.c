@@ -169,6 +169,7 @@ const struct _header_info header_info[] = {
 	{ " cret", " [#]", column_type_kernel },
 	{ " cfret", " [#]", column_type_kernel },
 	{ " ctret", " [#]", column_type_kernel },
+	{ " dupth", " [#]", column_type_kernel },
 	{ " mss", " [B]", column_type_kernel },
 	{ " mtu", " [B]", column_type_kernel },
 	{ " status", " ", column_type_other }
@@ -311,6 +312,7 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 		unsigned int fack, double linrtt, double linrttvar,
 		double linrto, int ca_state,
 		unsigned int totret, unsigned int totfret, unsigned int totrtoret,
+		int dupthresh,
 		int mss, int mtu, char* comment, int unit_byte)
 {
 	int columnWidthChanged = 0; //Flag: 0: column width has not changed
@@ -452,6 +454,10 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 
 	//param str_totrtoret
 	createOutputColumn(headerString1, headerString2, dataString, i, totrtoret, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
+	//param str_dupthresh
+	createOutputColumn(headerString1, headerString2, dataString, i, dupthresh, &column_states[i], 0, &columnWidthChanged);
 	i++;
 
 	createOutputColumn(headerString1, headerString2, dataString, i, mss, &column_states[i], 0, &columnWidthChanged);
@@ -778,6 +784,7 @@ void print_tcp_report_line(char hash, int id,
 		unsigned fack, unsigned reor, double rtt,
 		double rttvar, double rto, int ca_state,
 		unsigned totret, unsigned totfret, unsigned totrtoret,
+		unsigned dupthresh,
 		int mss, int mtu,
 #endif
 		int status
@@ -862,10 +869,10 @@ void print_tcp_report_line(char hash, int id,
 		min_iat * 1e3, avg_iat * 1e3, max_iat * 1e3,
 #ifdef __LINUX__
 		(double)cwnd, (double)ssth, (double)uack, (double)sack, (double)lost, (double)reor, fret, tret, fack,
-		(double)rtt / 1e3, (double)rttvar / 1e3, (double)rto / 1e3, ca_state, totret, totfret, totrtoret,
+		(double)rtt / 1e3, (double)rttvar / 1e3, (double)rto / 1e3, ca_state, totret, totfret, totrtoret, (double)dupthresh,
 #else
 		0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
 #endif
 		mss, mtu, comment_buffer, opt.mbyte
 	));
@@ -911,6 +918,7 @@ void print_report(int id, int endpoint, struct _report* report)
 		report->tcp_info.tcpi_total_retrans,
 		report->tcp_info.tcpi_total_fast_retrans,
 		report->tcp_info.tcpi_total_rto_retrans,
+		report->tcp_info.tcpi_dupthresh,
 #endif
 		report->mss,
 		report->mtu,
@@ -1265,12 +1273,13 @@ has_more_reports:
 					int tcpi_total_retrans;
 					int tcpi_total_fast_retrans;
 					int tcpi_total_rto_retrans;
+					int tcpi_dupthresh;
 					int bytes_read_low, bytes_read_high;
 					int bytes_written_low, bytes_written_high;
 
 					xmlrpc_decompose_value(&rpc_env, rv, "{"
 						"s:i,s:i,s:i,s:i,s:i,s:i," "s:i,s:i,s:is:i,s:i," "s:d,s:d,s:d,s:d,s:d,s:d," "s:i,s:i,"
-						"s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i," /* TCP info */
+						"s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i," /* TCP info */
 						"s:i,*}",
 
 						"id", &report.id,
@@ -1314,6 +1323,7 @@ has_more_reports:
 						"tcpi_total_retrans", &tcpi_total_retrans,
 						"tcpi_total_fast_retrans", &tcpi_total_fast_retrans,
 						"tcpi_total_rto_retrans", &tcpi_total_rto_retrans,
+						"tcpi_dupthresh", &tcpi_dupthresh,
 
 						"status", &report.status
 					);
@@ -1340,6 +1350,7 @@ has_more_reports:
 					report.tcp_info.tcpi_total_retrans = tcpi_total_retrans;
 					report.tcp_info.tcpi_total_fast_retrans = tcpi_total_fast_retrans;
 					report.tcp_info.tcpi_total_rto_retrans = tcpi_total_rto_retrans;
+					report.tcp_info.tcpi_dupthresh = tcpi_dupthresh;
 #endif
 					report.begin.tv_sec = begin_sec;
 					report.begin.tv_usec = begin_usec;

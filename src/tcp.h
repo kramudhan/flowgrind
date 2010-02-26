@@ -228,6 +228,8 @@ struct tcp_info
   u_int32_t	tcpi_total_retrans;
   u_int32_t tcpi_total_fast_retrans;
   u_int32_t tcpi_total_rto_retrans;
+
+  u_int32_t tcpi_dupthresh;
 };
 
 

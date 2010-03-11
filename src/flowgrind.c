@@ -444,6 +444,12 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 	createOutputColumn_str(headerString1, headerString2, dataString, i, tmp, &column_states[i], &columnWidthChanged);
 	i++;
 
+	createOutputColumn(headerString1, headerString2, dataString, i, mss, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
+	createOutputColumn(headerString1, headerString2, dataString, i, mtu, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
 	//param str_totret
 	createOutputColumn(headerString1, headerString2, dataString, i, totret, &column_states[i], 0, &columnWidthChanged);
 	i++;
@@ -458,12 +464,6 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 
 	//param str_dupthresh
 	createOutputColumn(headerString1, headerString2, dataString, i, dupthresh, &column_states[i], 0, &columnWidthChanged);
-	i++;
-
-	createOutputColumn(headerString1, headerString2, dataString, i, mss, &column_states[i], 0, &columnWidthChanged);
-	i++;
-
-	createOutputColumn(headerString1, headerString2, dataString, i, mtu, &column_states[i], 0, &columnWidthChanged);
 	i++;
 
 	strcat(headerString1, header_info[i].first);

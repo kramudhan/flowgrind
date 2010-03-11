@@ -166,12 +166,12 @@ const struct _header_info header_info[] = {
 	{ " rttvar", " [ms]", column_type_kernel },
 	{ " rto", " [ms]", column_type_kernel },
 	{ " castate", " ", column_type_kernel },
+	{ " mss", " [B]", column_type_kernel },
+	{ " mtu", " [B]", column_type_kernel },
 	{ " cret", " [#]", column_type_kernel },
 	{ " cfret", " [#]", column_type_kernel },
 	{ " ctret", " [#]", column_type_kernel },
 	{ " dupth", " [#]", column_type_kernel },
-	{ " mss", " [B]", column_type_kernel },
-	{ " mtu", " [B]", column_type_kernel },
 	{ " status", " ", column_type_other }
 };
 

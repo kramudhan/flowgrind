@@ -1020,6 +1020,8 @@ void report_final(void)
 					flow[id].final_report[endpoint]->bytes_read / flow[id].settings[endpoint].read_block_size
 					);
 			}
+			if (endpoint)
+				CATC("listen port =  %i", flow[id].endpoint_options[endpoint].listen_data_port);
 
 			if (flow[id].endpoint_options[endpoint].rate_str)
 				CATC("rate = %s", flow[id].endpoint_options[endpoint].rate_str);
@@ -1053,7 +1055,6 @@ void report_final(void)
 				flow[id].congestion_counter <= CONGESTION_LIMIT)
 			CAT(" (stopped)");
 */
-		
 			CAT("\n");
 
 			log_output(header_buffer);
@@ -1484,9 +1485,6 @@ void prepare_flow(int id, xmlrpc_client *rpc_client)
 {
 	xmlrpc_value *resultP, *extra_options;
 	int i;
-
-	int listen_data_port;
-	int listen_reply_port;
 	
 	/* Contruct extra socket options array */
 	extra_options = xmlrpc_array_new(&rpc_env);
@@ -1544,8 +1542,8 @@ void prepare_flow(int id, xmlrpc_client *rpc_client)
 
 	xmlrpc_parse_value(&rpc_env, resultP, "{s:i,s:i,s:i,s:i,s:i,*}",
 		"flow_id", &flow[id].endpoint_id[DESTINATION],
-		"listen_data_port", &listen_data_port,
-		"listen_reply_port", &listen_reply_port,
+		"listen_data_port", &flow[id].endpoint_options[DESTINATION].listen_data_port,
+		"listen_reply_port", &flow[id].endpoint_options[DESTINATION].listen_reply_port,
 		"real_listen_send_buffer_size", &flow[id].endpoint_options[DESTINATION].send_buffer_size_real,
 		"real_listen_read_buffer_size", &flow[id].endpoint_options[DESTINATION].receive_buffer_size_real);
 	die_if_fault_occurred(&rpc_env);
@@ -1609,8 +1607,8 @@ void prepare_flow(int id, xmlrpc_client *rpc_client)
 		/* source settings */
 		"destination_address", flow[id].endpoint_options[DESTINATION].test_address,
 		"destination_address_reply", flow[id].endpoint_options[DESTINATION].reply_address,
-		"destination_port", listen_data_port,
-		"destination_port_reply", listen_reply_port,
+		"destination_port", flow[id].endpoint_options[DESTINATION].listen_data_port,
+		"destination_port_reply", flow[id].endpoint_options[DESTINATION].listen_reply_port,
 		"late_connect", (int)flow[id].late_connect);
 	die_if_fault_occurred(&rpc_env);
 

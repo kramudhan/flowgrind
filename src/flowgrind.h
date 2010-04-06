@@ -58,6 +58,9 @@ struct _flow_endpoint {
 	char test_address[1000];
 	char reply_address[1000];
 	char bind_address[1000];
+
+	int listen_data_port;
+	int listen_reply_port;
 };
 
 struct _flow {

@@ -12,7 +12,7 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
-#include <netinet/tcp.h>
+#include "tcp.h" 
 #include <sys/socket.h>
 
 #define UNUSED_ARGUMENT(x) (void)x

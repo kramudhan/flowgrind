@@ -106,6 +106,7 @@ const struct _header_info header_info[] = {
 	{ " fack", " [#]", column_type_kernel },
 	{ " reor", " [#]", column_type_kernel },
         { " back", " [#]", column_type_kernel },
+	{ " revr", " [#]", column_type_kernel },
 	{ " rtt", " [ms]", column_type_kernel },
 	{ " rttvar", " [ms]", column_type_kernel },
 	{ " rto", " [ms]", column_type_kernel },
@@ -344,7 +345,7 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 		   double iatmin, double iatavg, double iatmax,
 		   unsigned int cwnd, unsigned int ssth, unsigned int uack, unsigned int sack, unsigned int lost, unsigned int reor,
 		   unsigned int retr, unsigned int tret, unsigned int fack, double linrtt, double linrttvar,
-		   double linrto, unsigned int backoff, int ca_state, int snd_mss,  int pmtu, char* status, int unit_byte)
+		   double linrto, unsigned int backoff, unsigned int lcd_reverts, int ca_state, int snd_mss,  int pmtu, char* status, int unit_byte)
 {
 	int columnWidthChanged = 0;
 
@@ -460,9 +461,13 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 	createOutputColumn(headerString1, headerString2, dataString, i, reor, &column_states[i], 0, &columnWidthChanged);
 	i++;
 
-	/* param str_linrtt */
+	/* param str_backoff */
 	createOutputColumn(headerString1, headerString2, dataString, i, backoff, &column_states[i], 0, &columnWidthChanged);
 	i++;
+
+        /* param str_revert */
+        createOutputColumn(headerString1, headerString2, dataString, i, lcd_reverts, &column_states[i], 0, &columnWidthChanged);
+        i++;
 
 	/* param str_linrtt */
 	createOutputColumn(headerString1, headerString2, dataString, i, linrtt, &column_states[i], 1, &columnWidthChanged);
@@ -1001,7 +1006,7 @@ void print_tcp_report_line(char hash, int id,
 		(unsigned int)r->tcp_info.tcpi_sacked, (unsigned int)r->tcp_info.tcpi_lost, (unsigned int)r->tcp_info.tcpi_reordering,
 		(unsigned int)r->tcp_info.tcpi_retrans, (unsigned int)r->tcp_info.tcpi_retransmits, (unsigned int)r->tcp_info.tcpi_fackets,
 		(double)r->tcp_info.tcpi_rtt / 1e3, (double)r->tcp_info.tcpi_rttvar / 1e3,
-		(double)r->tcp_info.tcpi_rto / 1e3, (unsigned int)r->tcp_info.tcpi_backoff,r->tcp_info.tcpi_ca_state,(unsigned int)r->tcp_info.tcpi_snd_mss,
+		(double)r->tcp_info.tcpi_rto / 1e3, (unsigned int)r->tcp_info.tcpi_backoff, (unsigned int)r->tcp_info.tcpi_lcd_reverts, r->tcp_info.tcpi_ca_state,(unsigned int)r->tcp_info.tcpi_snd_mss,
 #else
 		0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0,
@@ -2789,6 +2794,7 @@ has_more_reports:
 				int tcpi_rttvar;
 				int tcpi_rto;
 				int tcpi_backoff;
+				int tcpi_lcd_reverts;
 				int tcpi_ca_state;
 				int tcpi_snd_mss;
 				int bytes_read_low, bytes_read_high;
@@ -2803,7 +2809,7 @@ has_more_reports:
 					"{s:i,*}" /* MTU */
 					"{s:i,s:i,s:i,s:i,s:i,*}" /* TCP info */
 					"{s:i,s:i,s:i,s:i,s:i,*}" /* ...      */
-					"{s:i,s:i,s:i,s:i,s:i,*}" /* ...      */
+					"{s:i,s:i,s:i,s:i,s:i,s:i,*}" /* ...      */
 					"{s:i,*}"
 					")",
 
@@ -2848,6 +2854,7 @@ has_more_reports:
 					"tcpi_rttvar", &tcpi_rttvar,
 					"tcpi_rto", &tcpi_rto,
 					"tcpi_backoff", &tcpi_backoff,
+					"tcpi_lcd_reverts", &tcpi_lcd_reverts,
 					"tcpi_ca_state", &tcpi_ca_state,
 					"tcpi_snd_mss", &tcpi_snd_mss,
 
@@ -2876,6 +2883,7 @@ has_more_reports:
 				report.tcp_info.tcpi_rttvar = tcpi_rttvar;
 				report.tcp_info.tcpi_rto = tcpi_rto;
 				report.tcp_info.tcpi_backoff = tcpi_backoff;
+				report.tcp_info.tcpi_lcd_reverts = tcpi_lcd_reverts;
 				report.tcp_info.tcpi_ca_state = tcpi_ca_state;
 				report.tcp_info.tcpi_snd_mss = tcpi_snd_mss;
 #endif

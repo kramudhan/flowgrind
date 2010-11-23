@@ -12,7 +12,7 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
-#include "tcp.h" 
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 
 #define UNUSED_ARGUMENT(x) (void)x
@@ -177,7 +177,8 @@ struct _report
 	struct tcp_info tcp_info;
 #endif
 	int pmtu;
-
+	int imtu;
+	
 	int status;
 
 	struct _report* next;

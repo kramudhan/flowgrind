@@ -105,13 +105,12 @@ const struct _header_info header_info[] = {
 	{ " tret", " [#]", column_type_kernel },
 	{ " fack", " [#]", column_type_kernel },
 	{ " reor", " [#]", column_type_kernel },
-        { " back", " [#]", column_type_kernel },
-	{ " revr", " [#]", column_type_kernel },
+	{ " back", " [#]", column_type_kernel },
 	{ " rtt", " [ms]", column_type_kernel },
 	{ " rttvar", " [ms]", column_type_kernel },
 	{ " rto", " [ms]", column_type_kernel },
 	{ " ca state", " ", column_type_kernel },
-        { " smss", "[B] ", column_type_kernel },
+	{ " smss", "[B] ", column_type_kernel },
 	{ " pmtu", "[B]", column_type_kernel },
 #ifdef DEBUG
 	{ " status", " ", column_type_status }
@@ -345,7 +344,7 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 		   double iatmin, double iatavg, double iatmax,
 		   unsigned int cwnd, unsigned int ssth, unsigned int uack, unsigned int sack, unsigned int lost, unsigned int reor,
 		   unsigned int retr, unsigned int tret, unsigned int fack, double linrtt, double linrttvar,
-		   double linrto, unsigned int backoff, unsigned int lcd_reverts, int ca_state, int snd_mss,  int pmtu, char* status, int unit_byte)
+		   double linrto, unsigned int backoff, int ca_state, int snd_mss,  int pmtu, char* status, int unit_byte)
 {
 	int columnWidthChanged = 0;
 
@@ -461,13 +460,9 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 	createOutputColumn(headerString1, headerString2, dataString, i, reor, &column_states[i], 0, &columnWidthChanged);
 	i++;
 
-	/* param str_backoff */
+	/* param str_linrtt */
 	createOutputColumn(headerString1, headerString2, dataString, i, backoff, &column_states[i], 0, &columnWidthChanged);
 	i++;
-
-        /* param str_revert */
-        createOutputColumn(headerString1, headerString2, dataString, i, lcd_reverts, &column_states[i], 0, &columnWidthChanged);
-        i++;
 
 	/* param str_linrtt */
 	createOutputColumn(headerString1, headerString2, dataString, i, linrtt, &column_states[i], 1, &columnWidthChanged);
@@ -666,22 +661,22 @@ static void usage_sockopt(void)
 		}
 
 	fprintf(stderr,
-		"  -O x=TCP_CORK"
+		"  -O x=TCP_CORK\n"
 		"               set TCP_CORK on test socket\n"
-		"  -O x=TCP_NODELAY"
+		"  -O x=TCP_NODELAY\n"
 		"               disable nagle algorithmn\n"
-		"  -O x=SO_DEBUG"
+		"  -O x=SO_DEBUG\n"
 		"               set SO_DEBUG on test socket\n"
 		"  -O x=IP_MTU_DISCOVER\n"
 		"               set IP_MTU_DISCOVER on test socket if not\n"
 		"               already enabled by system default\n"
-		"  -O x=ROUTE_RECORD"
+		"  -O x=ROUTE_RECORD\n"
 		"               set ROUTE_RECORD on test socket\n\n"
 		
 		"the following non-standard socket options are supported:\n"
-		"  -O x=TCP_MTCP"
+		"  -O x=TCP_MTCP\n"
 		"               set TCP_MTCP (15) on test socket\n"
-		"  -O x=TCP_ELCN"
+		"  -O x=TCP_ELCN\n"
 		"               set TCP_ELCN (20) on test socket\n"
 		"  -O x=TCP_LCD set TCP_LCD (21) on test socket\n\n"
 
@@ -930,12 +925,12 @@ void print_tcp_report_line(char hash, int id,
 		strncat(comment_buffer, "/", sizeof(comment_buffer)-1); \
 		strncat(comment_buffer, (s), sizeof(comment_buffer)-1); }while(0);
 
-	if (r->response_blocks_read)
+	if (r->response_blocks_read && r->rtt_sum)
 		avg_rtt = r->rtt_sum / (double)(r->response_blocks_read);
 	else
 		min_rtt = max_rtt = avg_rtt = INFINITY;
 
-	if (r->request_blocks_read)
+	if (r->request_blocks_read && r->iat_sum)
 		avg_iat = r->iat_sum / (double)(r->request_blocks_read);
 	else
 		min_iat = max_iat = avg_iat = INFINITY;
@@ -1006,7 +1001,7 @@ void print_tcp_report_line(char hash, int id,
 		(unsigned int)r->tcp_info.tcpi_sacked, (unsigned int)r->tcp_info.tcpi_lost, (unsigned int)r->tcp_info.tcpi_reordering,
 		(unsigned int)r->tcp_info.tcpi_retrans, (unsigned int)r->tcp_info.tcpi_retransmits, (unsigned int)r->tcp_info.tcpi_fackets,
 		(double)r->tcp_info.tcpi_rtt / 1e3, (double)r->tcp_info.tcpi_rttvar / 1e3,
-		(double)r->tcp_info.tcpi_rto / 1e3, (unsigned int)r->tcp_info.tcpi_backoff, (unsigned int)r->tcp_info.tcpi_lcd_reverts, r->tcp_info.tcpi_ca_state,(unsigned int)r->tcp_info.tcpi_snd_mss,
+		(double)r->tcp_info.tcpi_rto / 1e3, (unsigned int)r->tcp_info.tcpi_backoff,r->tcp_info.tcpi_ca_state,(unsigned int)r->tcp_info.tcpi_snd_mss,
 #else
 		0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0,
@@ -1052,23 +1047,29 @@ void report_final(void)
 
 			CAT("#% 4d %s:", id, endpoint ? "D" : "S");
 
-			CAT(" %s", flow[id].endpoint_options[endpoint].server_address);
-			if (flow[id].endpoint_options[endpoint].server_port != DEFAULT_LISTEN_PORT)
-				CAT(":%d", flow[id].endpoint_options[endpoint].server_port);
+			CAT(" %s", flow[id].endpoint_options[endpoint].test_address);
 			if (strcmp(flow[id].endpoint_options[endpoint].server_address, flow[id].endpoint_options[endpoint].test_address) != 0)
-				CAT("/%s", flow[id].endpoint_options[endpoint].test_address);
-
-
-			CATC("sbuf = %u/%u, rbuf = %u/%u (real/req)",
-				flow[id].endpoint_options[endpoint].send_buffer_size_real,
-				flow[id].settings[endpoint].requested_send_buffer_size,
-				flow[id].endpoint_options[endpoint].receive_buffer_size_real,
-				flow[id].settings[endpoint].requested_read_buffer_size);
+				CAT("/%s", flow[id].endpoint_options[endpoint].server_address);
+                        if (flow[id].endpoint_options[endpoint].server_port != DEFAULT_LISTEN_PORT)
+                                CAT(":%d", flow[id].endpoint_options[endpoint].server_port);
 
 			if (flow[id].final_report[endpoint]) {
+
+                        	CATC("sbuf = %u/%u, rbuf = %u/%u (real/req)",
+                                	flow[id].endpoint_options[endpoint].send_buffer_size_real,
+                                	flow[id].settings[endpoint].requested_send_buffer_size,
+                                	flow[id].endpoint_options[endpoint].receive_buffer_size_real,
+                                	flow[id].settings[endpoint].requested_read_buffer_size);
+
+				
 				/* SMSS, Path MTU, Interface MTU */
-		                CATC("SMSS = %d", flow[id].final_report[endpoint]->tcp_info.tcpi_snd_mss);
-		                CATC("Path MTU = %d", flow[id].final_report[endpoint]->pmtu);
+				if (flow[id].final_report[endpoint]->tcp_info.tcpi_snd_mss > 0) 
+					CATC("SMSS = %d", flow[id].final_report[endpoint]->tcp_info.tcpi_snd_mss);
+				if (flow[id].final_report[endpoint]->pmtu > 0)
+					CATC("Path MTU = %d", flow[id].final_report[endpoint]->pmtu);
+				if (flow[id].final_report[endpoint]->imtu > 0)
+					CATC("Interface MTU = %d (%s)", flow[id].final_report[endpoint]->imtu, 
+						guess_topology(flow[id].final_report[endpoint]->imtu));
 
 				double thruput_read, thruput_written, transactions_per_sec;
 				double report_time, report_delta_write = 0, report_delta_read = 0, duration_read, duration_write;
@@ -1361,29 +1362,15 @@ struct _mtu_info {
 #define MTU_LIST_NUM    13
 
 
-char *guess_topology (int mss, int mtu)
+char *guess_topology (int mtu)
 {
 	int i;
 
-#ifdef IP_MTU
 	if (mtu) {
 		for (i = 0; i < MTU_LIST_NUM; i++) {
 			if (mtu == mtu_list[i].mtu) {
 				return mtu_list[i].topology;
 			}
-		}
-	}
-
-	return "unknown";
-#endif
-
-	mtu = 0;
-	for (i = 0; i < MTU_LIST_NUM; i++) {
-		/* Both, IP and TCP headers may vary in size from 20 to 60 */
-		if (((mss + 40) <= mtu_list[i].mtu)
-				&& (mtu_list[i].mtu <= (mss + 120))) {
-
-			return mtu_list[i].topology;
 		}
 	}
 
@@ -2794,7 +2781,6 @@ has_more_reports:
 				int tcpi_rttvar;
 				int tcpi_rto;
 				int tcpi_backoff;
-				int tcpi_lcd_reverts;
 				int tcpi_ca_state;
 				int tcpi_snd_mss;
 				int bytes_read_low, bytes_read_high;
@@ -2806,10 +2792,10 @@ has_more_reports:
 					"{s:i,s:i,s:i,s:i,*}" /* bytes */
 					"{s:i,s:i,s:i,s:i,*}" /* blocks */
 					"{s:d,s:d,s:d,s:d,s:d,s:d,*}" /* RTT, IAT */
-					"{s:i,*}" /* MTU */
+					"{s:i,s:i,*}" /* MTU */
 					"{s:i,s:i,s:i,s:i,s:i,*}" /* TCP info */
 					"{s:i,s:i,s:i,s:i,s:i,*}" /* ...      */
-					"{s:i,s:i,s:i,s:i,s:i,s:i,*}" /* ...      */
+					"{s:i,s:i,s:i,s:i,s:i,*}" /* ...      */
 					"{s:i,*}"
 					")",
 
@@ -2838,6 +2824,7 @@ has_more_reports:
 					"iat_sum", &report.iat_sum,
 
 					"pmtu", &report.pmtu,
+					"imtu", &report.imtu,
 
 					"tcpi_snd_cwnd", &tcpi_snd_cwnd,
 					"tcpi_snd_ssthresh", &tcpi_snd_ssthresh,
@@ -2854,7 +2841,6 @@ has_more_reports:
 					"tcpi_rttvar", &tcpi_rttvar,
 					"tcpi_rto", &tcpi_rto,
 					"tcpi_backoff", &tcpi_backoff,
-					"tcpi_lcd_reverts", &tcpi_lcd_reverts,
 					"tcpi_ca_state", &tcpi_ca_state,
 					"tcpi_snd_mss", &tcpi_snd_mss,
 
@@ -2883,7 +2869,6 @@ has_more_reports:
 				report.tcp_info.tcpi_rttvar = tcpi_rttvar;
 				report.tcp_info.tcpi_rto = tcpi_rto;
 				report.tcp_info.tcpi_backoff = tcpi_backoff;
-				report.tcp_info.tcpi_lcd_reverts = tcpi_lcd_reverts;
 				report.tcp_info.tcpi_ca_state = tcpi_ca_state;
 				report.tcp_info.tcpi_snd_mss = tcpi_snd_mss;
 #endif

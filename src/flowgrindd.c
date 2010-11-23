@@ -595,10 +595,10 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 			"{s:i,s:i,s:i,s:i}" /* bytes */
 			"{s:i,s:i,s:i,s:i}" /* block counts */
 			"{s:d,s:d,s:d,s:d,s:d,s:d}" /* RTT, IAT */
-			"{s:i}" /* MTU */
+			"{s:i,s:i}" /* MTU */
 			"{s:i,s:i,s:i,s:i,s:i}" /* TCP info */
 			"{s:i,s:i,s:i,s:i,s:i}" /* ...      */
-			"{s:i,s:i,s:i,s:i,s:i,s:i}" /* ...      */
+			"{s:i,s:i,s:i,s:i,s:i}" /* ...      */
 			"{s:i}"
 			")",
 
@@ -627,6 +627,7 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 			"iat_sum", report->iat_sum,
 
 			"pmtu", report->pmtu,
+			"imtu", report->imtu,
 #ifdef __LINUX__
 			"tcpi_snd_cwnd", (int)report->tcp_info.tcpi_snd_cwnd,
 			"tcpi_snd_ssthresh", (int)report->tcp_info.tcpi_snd_ssthresh,
@@ -643,7 +644,6 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 			"tcpi_rttvar", (int)report->tcp_info.tcpi_rttvar,
 			"tcpi_rto", (int)report->tcp_info.tcpi_rto,
 			"tcpi_backoff", (int)report->tcp_info.tcpi_backoff,
-			"tcpi_lcd_reverts", (int)report->tcp_info.tcpi_lcd_reverts,
 			"tcpi_ca_state", (int)report->tcp_info.tcpi_ca_state,
 			"tcpi_snd_mss", (int)report->tcp_info.tcpi_snd_mss,
 #else
@@ -660,7 +660,6 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 			"tcpi_rttvar", 0,
 			"tcpi_rto", 0,
 			"tcpi_backoff", 0,
-			"tcpi_lcd_reverts", 0,
 			"tcpi_ca_state", 0,
 			"tcpi_snd_mss", 0,
 #endif

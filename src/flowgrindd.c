@@ -138,6 +138,7 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 	xmlrpc_value *ret = 0;
 	char* destination_host = 0;
 	char* cc_alg = 0;
+	char* ro_alg = 0;
 	char* bind_address = 0;
 	xmlrpc_value* extra_options = 0;
 
@@ -161,8 +162,8 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 		"{s:i,s:d,s:d,*}" /* response */
 		"{s:i,s:d,s:d,*}" /* interpacket_gap */
 		"{s:b,s:b,s:i,s:i,*}"
-		"{s:s,*}"
-		"{s:i,s:i,s:i,s:i,s:i,*}"
+		"{s:s,s:s,*}"
+		"{s:i,s:i,s:i,s:i,s:i,s:i,*}"
 #ifdef HAVE_LIBPCAP
 		"{s:s,*}"
 #endif
@@ -211,7 +212,9 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 		"nonagle", &settings.nonagle,
 
 		"cc_alg", &cc_alg,
+		"ro_alg", &ro_alg,
 
+		"ro_mode", &settings.ro_mode,
 		"elcn", &settings.elcn,
 		"lcd",  &settings.lcd,
 		"mtcp", &settings.mtcp,
@@ -239,7 +242,7 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 		settings.maximum_block_size < MIN_BLOCK_SIZE ||
 		strlen(destination_host) >= sizeof(source_settings.destination_host) - 1||
 		source_settings.destination_port <= 0 || source_settings.destination_port > 65535 ||
-		strlen(cc_alg) > 255 ||
+		strlen(cc_alg) > 255 || strlen(ro_alg) > 255 ||
 		settings.num_extra_socket_options < 0 || settings.num_extra_socket_options > MAX_EXTRA_SOCKET_OPTIONS ||
 		xmlrpc_array_size(env, extra_options) != settings.num_extra_socket_options ||
 		settings.dscp < 0 || settings.dscp > 255 ||
@@ -291,6 +294,7 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 
 	strcpy(source_settings.destination_host, destination_host);
 	strcpy(settings.cc_alg, cc_alg);
+	strcpy(settings.ro_alg, ro_alg);
 	strcpy(settings.bind_address, bind_address);
 
 	request = malloc(sizeof(struct _request_add_flow_source));
@@ -303,9 +307,10 @@ static xmlrpc_value * add_flow_source(xmlrpc_env * const env,
 	}
 
 	/* Return our result. */
-	ret = xmlrpc_build_value(env, "{s:i,s:s,s:i,s:i}",
+	ret = xmlrpc_build_value(env, "{s:i,s:s,s:s,s:i,s:i,}",
 		"flow_id", request->flow_id,
 		"cc_alg", request->cc_alg,
+		"ro_alg", request->ro_alg,
 		"real_send_buffer_size", request->real_send_buffer_size,
 		"real_read_buffer_size", request->real_read_buffer_size);
 
@@ -316,6 +321,7 @@ cleanup:
 	}
 	free(destination_host);
 	free(cc_alg);
+	free(ro_alg);
 	free(bind_address);
 
 	if (extra_options)
@@ -339,6 +345,7 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 	int rc, i;
 	xmlrpc_value *ret = 0;
 	char* cc_alg = 0;
+	char* ro_alg = 0;
 	char* bind_address = 0;
 	xmlrpc_value* extra_options = 0;
 
@@ -361,8 +368,8 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 		"{s:i,s:d,s:d,*}" /* response */
 		"{s:i,s:d,s:d,*}" /* interpacket_gap */
 		"{s:b,s:b,s:i,s:i,*}"
-		"{s:s,*}"
-		"{s:i,s:i,s:i,s:i,s:i,*}"
+		"{s:s,s:s,*}"
+		"{s:i,s:i,s:i,s:i,s:i,s:i,*}"
 #ifdef HAVE_LIBPCAP
 		"{s:s,*}"
 #endif
@@ -410,7 +417,9 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 		"nonagle", &settings.nonagle,
 
 		"cc_alg", &cc_alg,
+		"ro_alg", &ro_alg,
 
+		"ro_mode", &settings.ro_mode,
 		"elcn", &settings.elcn,
 		"lcd", &settings.lcd,
 		"mtcp", &settings.mtcp,
@@ -432,7 +441,7 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 		settings.requested_send_buffer_size < 0 || settings.requested_read_buffer_size < 0 ||
 		settings.maximum_block_size < MIN_BLOCK_SIZE ||
 		settings.write_rate < 0 ||
-		strlen(cc_alg) > 255 ||
+		strlen(cc_alg) > 255 || strlen(ro_alg) > 255 ||
 		settings.num_extra_socket_options < 0 || settings.num_extra_socket_options > MAX_EXTRA_SOCKET_OPTIONS ||
 		xmlrpc_array_size(env, extra_options) != settings.num_extra_socket_options) {
 		XMLRPC_FAIL(env, XMLRPC_TYPE_ERROR, "Flow settings incorrect");
@@ -483,6 +492,7 @@ static xmlrpc_value * add_flow_destination(xmlrpc_env * const env,
 	}
 
 	strcpy(settings.cc_alg, cc_alg);
+	strcpy(settings.ro_alg, ro_alg);
 	strcpy(settings.bind_address, bind_address);
 	request = malloc(sizeof(struct _request_add_flow_destination));
 	request->settings = settings;
@@ -505,6 +515,7 @@ cleanup:
 		free(request);
 	}
 	free(cc_alg);
+	free(ro_alg);
 	free(bind_address);
 
 	if (extra_options)
@@ -599,7 +610,7 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 			"{s:i,s:i,s:i,s:i,s:i}" /* TCP info */
 			"{s:i,s:i,s:i,s:i,s:i}" /* ...      */
 			"{s:i,s:i,s:i,s:i,s:i}" /* ...      */
-			"{s:i}"
+			"{s:i,s:i,s:i,s:i,s:i}"
 			")",
 
 			"id", report->id,
@@ -645,6 +656,10 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 			"tcpi_rto", (int)report->tcp_info.tcpi_rto,
 			"tcpi_backoff", (int)report->tcp_info.tcpi_backoff,
 			"tcpi_ca_state", (int)report->tcp_info.tcpi_ca_state,
+			"tcpi_total_retrans", (int)report->tcp_info.tcpi_total_retrans,
+			"tcpi_total_fast_retrans", (int)report->tcp_info.tcpi_total_fast_retrans,
+			"tcpi_total_rto_retrans", (int)report->tcp_info.tcpi_total_rto_retrans,
+			"tcpi_dupthresh", (int)report->tcp_info.tcpi_dupthresh,
 			"tcpi_snd_mss", (int)report->tcp_info.tcpi_snd_mss,
 #else
 			"tcpi_snd_cwnd", 0,
@@ -661,6 +676,10 @@ static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 			"tcpi_rto", 0,
 			"tcpi_backoff", 0,
 			"tcpi_ca_state", 0,
+			"tcpi_total_retrans", 0,
+			"tcpi_total_fast_retrans", 0,
+			"tcpi_total_rto_retrans", 0,
+			"tcpi_dupthresh", 0,
 			"tcpi_snd_mss", 0,
 #endif
 

@@ -12,7 +12,8 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
-#include <netinet/tcp.h>
+//#include <netinet/tcp.h>
+#include "tcp.h"
 #include <sys/socket.h>
 
 #define UNUSED_ARGUMENT(x) (void)x
@@ -134,6 +135,8 @@ struct _flow_settings
 	int cork;
 	int nonagle;
 	char cc_alg[256];
+    char ro_alg[256];
+    int ro_mode;
 	int elcn;
 	int lcd;
 	int mtcp;

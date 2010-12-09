@@ -112,6 +112,10 @@ const struct _header_info header_info[] = {
 	{ " ca state", " ", column_type_kernel },
 	{ " smss", "[B] ", column_type_kernel },
 	{ " pmtu", "[B]", column_type_kernel },
+	{ " cret", " [#]", column_type_kernel },
+	{ " cfret", " [#]", column_type_kernel },
+	{ " ctret", " [#]", column_type_kernel },
+	{ " dupth", " [#]", column_type_kernel },
 #ifdef DEBUG
 	{ " status", " ", column_type_status }
 #endif
@@ -344,7 +348,9 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 		   double iatmin, double iatavg, double iatmax,
 		   unsigned int cwnd, unsigned int ssth, unsigned int uack, unsigned int sack, unsigned int lost, unsigned int reor,
 		   unsigned int retr, unsigned int tret, unsigned int fack, double linrtt, double linrttvar,
-		   double linrto, unsigned int backoff, int ca_state, int snd_mss,  int pmtu, char* status, int unit_byte)
+		   double linrto, unsigned int backoff, int ca_state,
+		   unsigned int totret, unsigned int totfret, unsigned int totrtoret, int dupthresh,
+		   int snd_mss,  int pmtu, char* status, int unit_byte)
 {
 	int columnWidthChanged = 0;
 
@@ -500,6 +506,18 @@ char *createOutput(char hash, int id, int type, double begin, double end,
 	i++;
 
 	createOutputColumn(headerString1, headerString2, dataString, i, pmtu, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
+	createOutputColumn(headerString1, headerString2, dataString, i, totret, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
+	createOutputColumn(headerString1, headerString2, dataString, i, totfret, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
+	createOutputColumn(headerString1, headerString2, dataString, i, totrtoret, &column_states[i], 0, &columnWidthChanged);
+	i++;
+
+	createOutputColumn(headerString1, headerString2, dataString, i, dupthresh, &column_states[i], 0, &columnWidthChanged);
 	i++;
 
 	/* status */
@@ -804,6 +822,8 @@ static void init_flows_defaults(void)
 			flow[id].settings[i].pushy = 0;
 			flow[id].settings[i].cork = 0;
 			flow[id].settings[i].cc_alg[0] = 0;
+			flow[id].settings[i].ro_alg[0] = 0;
+			flow[id].settings[i].ro_mode = 1;
 			flow[id].settings[i].elcn = 0;
 			flow[id].settings[i].lcd = 0;
 			flow[id].settings[i].mtcp = 0;
@@ -1000,10 +1020,14 @@ void print_tcp_report_line(char hash, int id,
 		(unsigned int)r->tcp_info.tcpi_sacked, (unsigned int)r->tcp_info.tcpi_lost, (unsigned int)r->tcp_info.tcpi_reordering,
 		(unsigned int)r->tcp_info.tcpi_retrans, (unsigned int)r->tcp_info.tcpi_retransmits, (unsigned int)r->tcp_info.tcpi_fackets,
 		(double)r->tcp_info.tcpi_rtt / 1e3, (double)r->tcp_info.tcpi_rttvar / 1e3,
-		(double)r->tcp_info.tcpi_rto / 1e3, (unsigned int)r->tcp_info.tcpi_backoff,r->tcp_info.tcpi_ca_state,(unsigned int)r->tcp_info.tcpi_snd_mss,
+		(double)r->tcp_info.tcpi_rto / 1e3, (unsigned int)r->tcp_info.tcpi_backoff,r->tcp_info.tcpi_ca_state,
+		(unsigned int)r->tcp_info.tcpi_total_retrans, (unsigned int)r->tcp_info.tcpi_total_fast_retrans,
+		(unsigned int)r->tcp_info.tcpi_total_rto_retrans, (int)r->tcp_info.tcpi_dupthresh,
+		(unsigned int)r->tcp_info.tcpi_snd_mss,
 #else
 		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0,
 #endif
 		r->pmtu, comment_buffer, opt.mbyte
 	));
@@ -1739,6 +1763,30 @@ static void parse_flow_option(int ch, char* optarg, int current_flow_ids[]) {
 						strcpy(flow[current_flow_ids[id]].settings[DESTINATION].PROPERTY_NAME, (PROPERTY_VALUE)); \
 				} \
 			}
+	#define ASSIGN_COMMON_FLOW_SETTING_ATOI(PROPERTY_NAME, PROPERTY_VALUE) \
+			if (current_flow_ids[0] == -1) { \
+				int id; \
+				for (id = 0; id < MAX_FLOWS; id++) { \
+					if (type != 'd') \
+						flow[id].settings[SOURCE].PROPERTY_NAME = \
+						atoi((PROPERTY_VALUE)); \
+					if (type != 's') \
+						flow[id].settings[DESTINATION].PROPERTY_NAME = \
+						atoi((PROPERTY_VALUE)); \
+				} \
+			} else { \
+				int id; \
+				for (id = 0; id < MAX_FLOWS; id++) { \
+					if (current_flow_ids[id] == -1) \
+						break; \
+					if (type != 'd') \
+						flow[current_flow_ids[id]].settings[SOURCE].PROPERTY_NAME = \
+						atoi((PROPERTY_VALUE)); \
+					if (type != 's') \
+						flow[current_flow_ids[id]].settings[DESTINATION].PROPERTY_NAME = \
+						atoi((PROPERTY_VALUE)); \
+				} \
+			}
 	for (token = strtok(optarg, ","); token; token = strtok(NULL, ",")) {
 		type = token[0];
 		if (token[1] == '=')
@@ -1862,6 +1910,16 @@ static void parse_flow_option(int ch, char* optarg, int current_flow_ids[]) {
 						usage_sockopt();
 					}
 					ASSIGN_COMMON_FLOW_SETTING_STR(cc_alg, arg + 16);
+				}
+				else if (!memcmp(arg, "TCP_REORDER_MODULE=", 19)) {
+					if (strlen(arg + 19) >= sizeof(flow[0].settings[SOURCE].ro_alg)) {
+						fprintf(stderr, "Too large string for TCP_REORDER_MODULE value");
+						usage_sockopt();
+					}
+					ASSIGN_COMMON_FLOW_SETTING_STR(ro_alg, arg + 19);
+				}
+				else if (!memcmp(arg, "TCP_REORDER_MODE=", 17)) {
+					ASSIGN_COMMON_FLOW_SETTING_ATOI(ro_mode, arg + 17);
 				}
 				else if (!strcmp(arg, "SO_DEBUG")) {
 					ASSIGN_COMMON_FLOW_SETTING(so_debug, 1);
@@ -2489,8 +2547,8 @@ void prepare_flow(int id, xmlrpc_client *rpc_client)
 		"{s:i,s:d,s:d}" /* response */
 		"{s:i,s:d,s:d}" /* interpacket_gap */
 		"{s:b,s:b,s:i,s:i}"
-		"{s:s}"
-		"{s:i,s:i,s:i,s:i,s:i}"
+		"{s:s,s:s}"
+		"{s:i,s:i,s:i,s:i,s:i,s:i}"
 #ifdef HAVE_LIBPCAP
 		"{s:s}"
 #endif
@@ -2538,6 +2596,8 @@ void prepare_flow(int id, xmlrpc_client *rpc_client)
 		"nonagle", flow[id].settings[DESTINATION].nonagle,
 
 		"cc_alg", flow[id].settings[DESTINATION].cc_alg,
+		"ro_alg", flow[id].settings[DESTINATION].ro_alg,
+		"ro_mode", flow[id].settings[DESTINATION].ro_mode,
 
 		"elcn", flow[id].settings[DESTINATION].elcn,
 		"lcd", flow[id].settings[DESTINATION].lcd,
@@ -2593,8 +2653,8 @@ void prepare_flow(int id, xmlrpc_client *rpc_client)
 		"{s:i,s:d,s:d}" /* response */
 		"{s:i,s:d,s:d}" /* interpacket_gap */
 		"{s:b,s:b,s:i,s:i}"
-		"{s:s}"
-		"{s:i,s:i,s:i,s:i,s:i}"
+		"{s:s,s:s}"
+		"{s:i,s:i,s:i,s:i,s:i,s:i}"
 #ifdef HAVE_LIBPCAP
 		"{s:s}"
 #endif
@@ -2644,6 +2704,8 @@ void prepare_flow(int id, xmlrpc_client *rpc_client)
 		"nonagle", (int)flow[id].settings[SOURCE].nonagle,
 
 		"cc_alg", flow[id].settings[SOURCE].cc_alg,
+		"ro_alg", flow[id].settings[SOURCE].ro_alg,
+		"ro_mode", flow[id].settings[SOURCE].ro_mode,
 
 		"elcn", flow[id].settings[SOURCE].elcn,
 		"lcd", flow[id].settings[SOURCE].lcd,
@@ -2782,6 +2844,10 @@ has_more_reports:
 				int tcpi_rto;
 				int tcpi_backoff;
 				int tcpi_ca_state;
+				int tcpi_total_retrans;
+				int tcpi_total_fast_retrans;
+				int tcpi_total_rto_retrans;
+				int tcpi_dupthresh;
 				int tcpi_snd_mss;
 				int bytes_read_low, bytes_read_high;
 				int bytes_written_low, bytes_written_high;
@@ -2796,7 +2862,7 @@ has_more_reports:
 					"{s:i,s:i,s:i,s:i,s:i,*}" /* TCP info */
 					"{s:i,s:i,s:i,s:i,s:i,*}" /* ...      */
 					"{s:i,s:i,s:i,s:i,s:i,*}" /* ...      */
-					"{s:i,*}"
+					"{s:i,s:i,s:i,s:i,s:i,*}"
 					")",
 
 					"id", &report.id,
@@ -2842,6 +2908,10 @@ has_more_reports:
 					"tcpi_rto", &tcpi_rto,
 					"tcpi_backoff", &tcpi_backoff,
 					"tcpi_ca_state", &tcpi_ca_state,
+					"tcpi_total_retrans", &tcpi_total_retrans,
+					"tcpi_total_fast_retrans", &tcpi_total_fast_retrans,
+					"tcpi_total_rto_retrans", &tcpi_total_rto_retrans,
+					"tcpi_dupthresh", &tcpi_dupthresh,
 					"tcpi_snd_mss", &tcpi_snd_mss,
 
 					"status", &report.status
@@ -2870,6 +2940,10 @@ has_more_reports:
 				report.tcp_info.tcpi_rto = tcpi_rto;
 				report.tcp_info.tcpi_backoff = tcpi_backoff;
 				report.tcp_info.tcpi_ca_state = tcpi_ca_state;
+				report.tcp_info.tcpi_total_retrans = tcpi_total_retrans;
+				report.tcp_info.tcpi_total_fast_retrans = tcpi_total_fast_retrans;
+				report.tcp_info.tcpi_total_rto_retrans = tcpi_total_rto_retrans;
+				report.tcp_info.tcpi_dupthresh = tcpi_dupthresh;
 				report.tcp_info.tcpi_snd_mss = tcpi_snd_mss;
 #endif
 				report.begin.tv_sec = begin_sec;

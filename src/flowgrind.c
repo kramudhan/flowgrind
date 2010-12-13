@@ -611,7 +611,7 @@ static void usage(void)
 		"               Test from/to HOST. Optional argument is the address and port\n"
 		"               for the CONTROL connection to the same host.\n"
 		"               An endpoint that isn't specified is assumed to be 127.0.0.1\n"
-		"  -L x         Call connect() on test socket immediately before starting to send\n"
+		"  -L           Call connect() on test socket immediately before starting to send\n"
 		"               data (late connect). If not specified the test connection is\n"
 		"               established in the preparation phase before the test starts\n"
 #ifdef HAVE_LIBPCAP
@@ -632,7 +632,6 @@ static void usage(void)
 		"               same a -G s=g,C,#'\n"
 		"  -U #         Set application buffer size (default: 8192)\n"
 		"               truncates values if used with stochastic traffic generation\n"
-		"               enforces write/read block size if used without traffic gen\n"
 		"  -T x=#.#     Set flow duration, in seconds (default: s=10,d=0)\n"
 		"  -W x=#       Set requested receiver buffer (advertised window) in bytes\n"
 		"  -Y x=#.#     Set initial delay before the host starts to send data\n\n",
@@ -743,6 +742,8 @@ static void usage_trafgenopt(void)
 		"                              normal distribution)\n"
 		"\n"
 		"Reminder: \n"
+		"\n"
+		"- The man page contains more explained examples.\n"
 		"\n"
 		"- Using Bidirectional Traffic Generation can lead to unexpected results.\n"
 		"\n"
@@ -1055,16 +1056,16 @@ void report_final(void)
 			CAT(" %s", flow[id].endpoint_options[endpoint].test_address);
 			if (strcmp(flow[id].endpoint_options[endpoint].server_address, flow[id].endpoint_options[endpoint].test_address) != 0)
 				CAT("/%s", flow[id].endpoint_options[endpoint].server_address);
-                        if (flow[id].endpoint_options[endpoint].server_port != DEFAULT_LISTEN_PORT)
-                                CAT(":%d", flow[id].endpoint_options[endpoint].server_port);
+			if (flow[id].endpoint_options[endpoint].server_port != DEFAULT_LISTEN_PORT)
+				CAT(":%d", flow[id].endpoint_options[endpoint].server_port);
 
 			if (flow[id].final_report[endpoint]) {
 
-                        	CATC("sbuf = %u/%u, rbuf = %u/%u (real/req)",
-                                	flow[id].endpoint_options[endpoint].send_buffer_size_real,
-                                	flow[id].settings[endpoint].requested_send_buffer_size,
-                                	flow[id].endpoint_options[endpoint].receive_buffer_size_real,
-                                	flow[id].settings[endpoint].requested_read_buffer_size);
+				CATC("sbuf = %u/%u, rbuf = %u/%u (real/req)",
+					flow[id].endpoint_options[endpoint].send_buffer_size_real,
+					flow[id].settings[endpoint].requested_send_buffer_size,
+					flow[id].endpoint_options[endpoint].receive_buffer_size_real,
+					flow[id].settings[endpoint].requested_read_buffer_size);
 
 				
 				/* SMSS, Path MTU, Interface MTU */
@@ -1091,7 +1092,7 @@ void report_final(void)
 				duration_read = flow[id].settings[endpoint].duration[READ] + report_delta_read;
 
 				if (flow[id].settings[endpoint].duration[WRITE])
-					CATC("flow duration %.3fs/%.3fs (real/req)",
+					CATC("flow duration = %.3fs/%.3fs (real/req)",
 						duration_write,
 						flow[id].settings[endpoint].duration[WRITE]);
 
@@ -1119,18 +1120,21 @@ void report_final(void)
 					CATC("through = %.6f/%.6fMbit/s (out/in)", thruput_written, thruput_read);
 
 				/* transactions */
+
 				transactions_per_sec = flow[id].final_report[endpoint]->response_blocks_read / MAX(duration_read, duration_write);
+				if (isnan(transactions_per_sec))
+					transactions_per_sec = 0.0;
 				if (transactions_per_sec)
-					CATC("%.2f transactions/s", transactions_per_sec);
+					CATC("transactions/s = %.2f", transactions_per_sec);
 
 				/* blocks */
 				if (flow[id].final_report[endpoint]->request_blocks_written || flow[id].final_report[endpoint]->request_blocks_read)
-					CATC("%u/%u request blocks (out/in)",
+					CATC("request blocks = %u/%u (out/in)",
 					flow[id].final_report[endpoint]->request_blocks_written,
 					flow[id].final_report[endpoint]->request_blocks_read);
 
 				if (flow[id].final_report[endpoint]->response_blocks_written || flow[id].final_report[endpoint]->response_blocks_read)
-					CATC("%u/%u response blocks (out/in)",
+					CATC("response blocks = %u/%u (out/in)",
 					flow[id].final_report[endpoint]->response_blocks_written,
 					flow[id].final_report[endpoint]->response_blocks_read);
 
@@ -1140,7 +1144,7 @@ void report_final(void)
 					double max_rtt = flow[id].final_report[endpoint]->rtt_max;
 					double avg_rtt;
 					avg_rtt = flow[id].final_report[endpoint]->rtt_sum / (double)(flow[id].final_report[endpoint]->response_blocks_read);
-					CATC("%.3f/%.3f/%.3f RTT (min/avg/max)", min_rtt*1e3, avg_rtt*1e3, max_rtt*1e3);
+					CATC("RTT = %.3f/%.3f/%.3f (min/avg/max)", min_rtt*1e3, avg_rtt*1e3, max_rtt*1e3);
 				}
 
 				/* iat */
@@ -1149,7 +1153,7 @@ void report_final(void)
 					double max_iat = flow[id].final_report[endpoint]->iat_max;
 					double avg_iat; 
 					avg_iat = flow[id].final_report[endpoint]->iat_sum / (double)(flow[id].final_report[endpoint]->request_blocks_read);
-					CATC("%.3f/%.3f/%.3f IAT (min/avg/max)", min_iat*1e3, avg_iat*1e3, max_iat*1e3);
+					CATC("IAT = %.3f/%.3f/%.3f (min/avg/max)", min_iat*1e3, avg_iat*1e3, max_iat*1e3);
 				}
 
 				free(flow[id].final_report[endpoint]); 
@@ -1360,6 +1364,7 @@ struct _mtu_info {
 	{ 4352,         "FDDI" },                       /* RFC1390 */
 	{ 1500,         "Ethernet/PPP" },               /* RFC894, RFC1548 */
 	{ 1492,         "PPPoE" },                      /* RFC2516 */
+	{ 1472,		"IP-in-IP" },			/* RFC1853 */
 	{ 1006,         "SLIP" },                       /* RFC1055 */
 	{ 576,          "X.25 & ISDN" },                /* RFC1356 */
 	{ 296,          "PPP (low delay)" },

@@ -185,9 +185,11 @@ int get_pmtu(int fd)
 	socklen_t mtu_len = sizeof(mtu);
 
 	if (getsockopt(fd, SOL_IP, IP_MTU, &mtu, &mtu_len) == -1)
-		return -1;
+		return 0;
 
-	return mtu;
+	if (mtu > 0) 
+		return mtu;
+	else return 0;
 #else
 	UNUSED_ARGUMENT(fd);
 	return 0;
@@ -200,40 +202,45 @@ int get_imtu(int fd)
 	struct sockaddr_storage sa;
 	socklen_t sl = sizeof(sa);
 
-  	struct ifreq ifreqs[20];
+	struct ifreq ifreqs[20];
 
-   	struct ifconf ifconf;
-   	int nifaces, i, found = 0;
+	struct ifconf ifconf;
+	int nifaces, i, mtu, found = 0;
 
-   	memset(&ifconf,0,sizeof(ifconf));
-   	ifconf.ifc_buf = (char*)(ifreqs);
-   	ifconf.ifc_len = sizeof(ifreqs);
+	memset(&ifconf,0,sizeof(ifconf));
+	ifconf.ifc_buf = (char*)(ifreqs);
+	ifconf.ifc_len = sizeof(ifreqs);
 
 	if (getsockname(fd, (struct sockaddr *)&sa, &sl) < 0)
-		return -1;
+		return 0;
 	
 	if (ioctl(fd, SIOCGIFCONF, &ifconf) < 0)
-		return -1;
+		return 0;
 	
 	nifaces =  ifconf.ifc_len/sizeof(struct ifreq);
 
 	for(i = 0; i < nifaces; i++)
-   	{	
+	{	
 		if (sockaddr_compare((struct sockaddr *)&ifreqs[i].ifr_addr, (struct sockaddr *)&sa)) {
 			found = 1;
 			break;
 		}
-   	}
+	}
 
 	if (ioctl(fd, SIOCGIFMTU, &ifreqs[i]) < 0)
-		return -1;
+		return 0;
 
 	DEBUG_MSG(LOG_NOTICE, "interface %s (%s) has mtu %d",
 		  ifreqs[i].ifr_name,
 		  fg_nameinfo((struct sockaddr *)&ifreqs[i].ifr_addr, sizeof(struct sockaddr)),
 		  ifreqs[i].ifr_mtu);
 	
-	return ifreqs[i].ifr_mtu;
+	mtu = ifreqs[i].ifr_mtu;
+
+	if (mtu > 0) 
+		return mtu;
+	else 
+		return 0;
 }
 
 int set_keepalive(int fd, int how)

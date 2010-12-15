@@ -661,11 +661,10 @@ static void process_select(fd_set *rfds, fd_set *wfds, fd_set *efds)
 			}
 			if (FD_ISSET(flow->fd, wfds))
 				if (write_data(flow) == -1)
-					DEBUG_MSG(LOG_ERR, "write_data() failed");
-
+					goto remove;
 			if (FD_ISSET(flow->fd, rfds))
 				if (read_data(flow) == -1)
-					DEBUG_MSG(LOG_ERR, "read_data() failed");
+					goto remove;
 		}
 		i++;
 		continue;

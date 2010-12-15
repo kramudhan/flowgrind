@@ -182,14 +182,15 @@ int get_pmtu(int fd)
 #ifdef SOL_IP
 	int mtu = 0;
 
-	socklen_t mtu_len = sizeof(mtu);
-
-	if (getsockopt(fd, SOL_IP, IP_MTU, &mtu, &mtu_len) == -1)
+	if (fd < 0)
 		return 0;
 
-	if (mtu > 0) 
+	socklen_t mtu_len = sizeof(mtu);
+
+	if (getsockopt(fd, SOL_IP, IP_MTU, &mtu, &mtu_len) < 0)
+		return 0;
+	else
 		return mtu;
-	else return 0;
 #else
 	UNUSED_ARGUMENT(fd);
 	return 0;
@@ -213,14 +214,14 @@ int get_imtu(int fd)
 
 	if (getsockname(fd, (struct sockaddr *)&sa, &sl) < 0)
 		return 0;
-	
+
 	if (ioctl(fd, SIOCGIFCONF, &ifconf) < 0)
 		return 0;
-	
+
 	nifaces =  ifconf.ifc_len/sizeof(struct ifreq);
 
 	for(i = 0; i < nifaces; i++)
-	{	
+	{
 		if (sockaddr_compare((struct sockaddr *)&ifreqs[i].ifr_addr, (struct sockaddr *)&sa)) {
 			found = 1;
 			break;
@@ -234,12 +235,12 @@ int get_imtu(int fd)
 		  ifreqs[i].ifr_name,
 		  fg_nameinfo((struct sockaddr *)&ifreqs[i].ifr_addr, sizeof(struct sockaddr)),
 		  ifreqs[i].ifr_mtu);
-	
+
 	mtu = ifreqs[i].ifr_mtu;
 
-	if (mtu > 0) 
+	if (mtu > 0)
 		return mtu;
-	else 
+	else
 		return 0;
 }
 
@@ -328,14 +329,14 @@ int toggle_tcp_cork(int fd)
 	return -1;
 #endif
 }
-	
+
 int set_tcp_mtcp(int fd)
 {
 #ifndef TCP_MTCP
 #define TCP_MTCP 15
-#endif	
-	int opt = 1; 
-	
+#endif
+	int opt = 1;
+
 	DEBUG_MSG(LOG_WARNING, "Setting TCP_MTCP on fd %d", fd);
 	return setsockopt(fd, SOL_TCP, TCP_MTCP, &opt, sizeof(opt));
 }

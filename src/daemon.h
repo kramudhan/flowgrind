@@ -236,6 +236,8 @@ struct request_get_status
 
 	int started;
 	int num_flows;
+	/** Server UUID */
+	char server_uuid[38];	
 };
 
 pthread_t daemon_thread;

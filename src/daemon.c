@@ -86,7 +86,6 @@
 
 int daemon_pipe[2];
 
-int next_flow_id = 0;
 
 pthread_mutex_t mutex;
 struct request *requests = 0, *requests_last = 0;
@@ -865,7 +864,7 @@ void init_flow(struct flow* flow, int is_source)
 {
 	memset(flow, 0, sizeof(struct flow));
 
-	flow->id = next_flow_id++;
+	flow->id = -1;
 	flow->endpoint = is_source ? SOURCE : DESTINATION;
 	flow->state = is_source ? GRIND_WAIT_CONNECT : GRIND_WAIT_ACCEPT;
 	flow->fd = -1;

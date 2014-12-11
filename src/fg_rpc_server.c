@@ -663,9 +663,10 @@ static xmlrpc_value * method_get_status(xmlrpc_env * const env,
 		XMLRPC_FAIL(env, XMLRPC_INTERNAL_ERROR, request->r.error); /* goto cleanup on failure */
 
 	/* Return our result. */
-	ret = xmlrpc_build_value(env, "{s:i,s:i}",
+	ret = xmlrpc_build_value(env, "{s:i,s:i,s:s}",
 		"started", request->started,
-		"num_flows", request->num_flows);
+		"num_flows", request->num_flows,
+		"server_uuid", request->server_uuid);
 
 cleanup:
 	if (request)

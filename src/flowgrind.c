@@ -481,6 +481,13 @@ static void init_controller_options(void)
 	copt.force_unit = INT_MAX;
 }
 
+/**
+ * Initilization the flow option to default values.
+ *
+ * Initializes the controller flow option settings, 
+ * final report for both source and destination daemon 
+ * in the flow.
+ */
 static void init_flow_options(void)
 {
 	for (int id = 0; id < MAX_FLOWS; id++) {
@@ -637,7 +644,16 @@ static void prepare_xmlrpc_client(xmlrpc_client **rpc_client)
 			     clientParms_cpsize, rpc_client);
 }
 
-/* Checks that all nodes use our flowgrind version */
+
+/**
+ * Checks that all nodes use flowgrind version.
+ *
+ * Collect the daemons flowgrind version and XML-RPC API version, 
+ * nodes OS name and release details 
+ * Store these information in the controller server info.
+ *
+ * @param[in,out] rpc_client to connect controller to daemon
+ */
 static void check_version(xmlrpc_client *rpc_client)
 {
 	xmlrpc_value * resultP = 0;
@@ -691,6 +707,20 @@ static void check_version(xmlrpc_client *rpc_client)
 		sleep(5);
 	}
 }
+
+/**
+ * Determine the daemons for controller flow by UUID.
+ *
+ * Determine the daemons memory block size by number of server in
+ * the controller flow option. Store daemons UUID and daemons call state
+ *
+ * Call state is used by controller to avoid calling the same daemon again
+ * in flow start/stop and fetching the reports from the daemons. Daemons
+ * give all flows report in a single request to controller. So call state
+ * used to prevent controller to call same daemon again.
+ *
+ * @param[in,out] server_uuid UUID from daemons
+ */
 static struct daemon* set_unique_daemon_by_uuid(const char* server_uuid)
 {
 	unsigned short i=0;
@@ -729,7 +759,18 @@ static struct daemon* set_unique_daemon_by_uuid(const char* server_uuid)
 	return &unique_daemon[i];
 }
 
-/* Checks that all nodes are currently idle */
+/**
+ * Checks that all nodes are currently idle.
+ *
+ * Get the daemon's flow start status and number of flows running in 
+ * a daemon. This piece of information is used to determine, whether the
+ * daemon in a node is busy or idle
+ *
+ * In addition to it, daemon UUID is also retreived. This information is used
+ * to determine daemon in the controller flow information
+ *
+ * @param[in,out] rpc_client to connect controller to daemon
+ */
 static void check_idle(xmlrpc_client *rpc_client)
 {
 	xmlrpc_value * resultP = 0;
@@ -860,6 +901,17 @@ static void print_headline(void)
 				COL_TCP_REOR, COL_TCP_BKOF);
 }
 
+/**
+ * Prepare test connection for a flow between source and destination daemons.
+ *
+ * 
+ * Controller sends the flow option to source and destination daemons
+ * separately through XML RPC connection and get backs the flow id and
+ * snd/rcx buffer size from the daemons.
+ *
+ * @param[in] id flow id to prepare the test connection in daemons
+ * @param[in,out] rpc_client to connect controller to daemon
+ */
 static void prepare_flow(int id, xmlrpc_client *rpc_client)
 {
 	xmlrpc_value *resultP, *extra_options;
@@ -1083,6 +1135,14 @@ static void prepare_flow(int id, xmlrpc_client *rpc_client)
 	DEBUG_MSG(LOG_WARNING, "prepare flow %d completed", id);
 }
 
+/**
+ * Prepare test connection for all flows in a test
+ *
+ * Prepare test connection for each flow according to the
+ * flow id
+ *
+ * @param[in,out] rpc_client to connect controller to daemon
+ */
 static void prepare_all_flows(xmlrpc_client *rpc_client)
 {
 	/* prepare flows */
@@ -1092,6 +1152,15 @@ static void prepare_all_flows(xmlrpc_client *rpc_client)
 		prepare_flow(id, rpc_client);
 	}
 }
+
+/**
+ * clear the daemon call state
+ *
+ * Daemon call state is cleared before starting the daemon test flow, 
+ * fetching the reports from the daemon and, while stopping the test flow.
+ * daemon call state is cleared to ensure the previous call state won't 
+ * affect the concurrent running functionality
+ */
 static void clear_daemon_state(void)
 {
 	for (unsigned short j = 0; j < num_unique_daemon; j++) {
@@ -1099,7 +1168,22 @@ static void clear_daemon_state(void)
 	}
 
 }
-/* start flows */
+
+/**
+ * Start test connections for all flows in a test
+ *
+ * All the test connection are started, but test connection flow in the 
+ * controller and in daemon are different. In the controller, test connection
+ * are respective to number of flows in a test,but in daemons test connection
+ * are respective to flow endpoints. Single daemons can maintain multiple flows
+ *  endpoints, So controller should start a daemon only once.
+ *
+ * In order to faciliate this, the daemons call state is used to check, whether
+ * the daemon is called by the controller. If the daemon is called, then remote
+ * procedure call to call that daemon again is ignored.
+ *
+ * @param[in,out] rpc_client to connect controller to daemon
+ */
 static void start_all_flows(xmlrpc_client *rpc_client)
 {
 	xmlrpc_value * resultP = 0;
@@ -1153,7 +1237,19 @@ static void start_all_flows(xmlrpc_client *rpc_client)
 	}
 }
 
-/* Poll the daemons for reports */
+/**
+ * Reports are fetched from the flow endpoint daemon
+ *
+ * Single daemon can maintain multiple flows endpoints and daemons combine all 
+ * its flows reports and send them to the controller. So controller should call
+ * an daemon in its flows only once. 
+ *
+ * In order to faciliate this, the daemons call state is used to check, whether
+ * the daemon is called by the controller. If the daemon is called, then remote
+ *  procedure call to call that daemon again is ignored.
+ *
+ * @param[in,out] rpc_client to connect controller to daemon
+ */
 static void fetch_reports(xmlrpc_client *rpc_client)
 {
 
@@ -1334,8 +1430,22 @@ has_more_reports:
 		}
 }
 
-/* This function allots an report received from one daemon (identified
- * by server_url)  to the proper flow */
+/**
+ * Reports are fetched from the flow endpoint daemon
+ *
+ * Single daemon can maintain multiple flows endpoints and daemons combine all
+ * it flows report and send the controller. So controller give the flow ID to
+ * daemons, while prepare the flow.Controller flow ID is maintained by the
+ * daemons to maintain its flow endpoints.So When getting back the reports from
+ * the daemons, the controller use those flow ID registered for the daemon in
+ * the prepare flow as reference to distinguish the reports.
+ *
+ * The daemon also send back the details regarding flow endpoints
+ * i.e. source or destination. So this information is also used by the daemons
+ * to distinguish the report in the report flow.
+ *
+ * @param[in] report report from the daemon
+ */
 static void report_flow(struct report* report)
 {
 	int *i = NULL;
@@ -1378,6 +1488,20 @@ exit_outer_loop:
 	print_interval_report(id, *i, report);
 }
 
+/**
+ * Stop test connections for all flows in a test
+ *
+ *
+ * All the test connection are stopped, but the test connection flow in the
+ * controller and in daemon are different. In the controller, test connection
+ * are respective to number of flows in a test,but in daemons test connection
+ * are respective to flow endpoints. Single daemons can maintain multiple flows
+ * endpoints, So controller should stop a daemon only once.
+ *
+ * In order to faciliate this, the daemons call state is used to check,
+ * whether the daemon is called by the controller. If the daemon is called, 
+ * then remote procedure call to that daemon again is ignored.
+ */
 static void close_all_flows(void)
 {
 	xmlrpc_env env;
@@ -1841,10 +1965,18 @@ static char *guess_topology(unsigned mtu)
 }
 
 /**
- * Print final report (i.e. summary line) for endpoint @p e of flow @p flow_id.
+ * To calculate the performance metrics and display the results in flowgrind 
+ * controller
  *
- * @param[in] flow_id flow a final report will be created for
- * @param[in] e flow endpoint (SOURCE or DESTINATION)
+ * All the daemon information regarding the daemons IP address,controller-daemon 
+ * RPC connection information, Node OS name and release details are stored in
+ * the server information memory block. Final report use the final report sent
+ * by the daemon to calculate the final performance metrics for the final test
+ * result. Use both server information and calculated results to display the
+ * final report in the controller
+ *
+ * @param[in] flow_id controller flow ID
+ * @param[in] e source or destination endpoint
  */
 static void print_final_report(unsigned short flow_id, enum endpoint_t e)
 {
@@ -2016,10 +2148,15 @@ out:
 	print_output("%s\n", buf);
 	free(buf);
 }
+
+/**
+ * To free server information memory block.
+ */
 static void free_server_info(void){
 	free(servers_info);
 	free(unique_daemon);
 }
+
 /**
  * Print final report (i.e. summary line) for all configured flows.
  */
@@ -2034,6 +2171,16 @@ static void print_all_final_reports(void)
 	}
 	free_server_info();
 }
+
+/**
+ * Finds the daemon (or creating a new one) for a given server_url,
+ * uses global static servers_info pointer variable for storage
+ *
+ * @param[in] XML-RPC connection url
+ * @param[in] server_name flow endpoints IP address
+ * @param[in] server_port controller - daemon XML-RPC connection port Nr
+ * @return server_info allocated memory block for the given server url 
+ */
 static struct server_info * get_server_info_by_url(const char* server_url,
 					  const char* server_name,
 					  unsigned short server_port)

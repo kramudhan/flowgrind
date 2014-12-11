@@ -501,6 +501,17 @@ cleanup:
 	return ret;
 }
 
+/**
+ * To get the reports from the daemon.
+ *
+ * Flowgrind rpc server get the reports from the daemon and encode the information
+ * and send the report data to the controller through XML-RPC connection
+ *
+ * @param[in,out] env XML-RPC environment object
+ * @param[in,out] param_array unused arg
+ * @param[in,out] user_data unused arg
+ * return xmlrpc_value XML-RPC value
+ */
 static xmlrpc_value * method_get_reports(xmlrpc_env * const env,
 		   xmlrpc_value * const param_array,
 		   void * const user_data)
@@ -681,7 +692,21 @@ static xmlrpc_value * method_get_version(xmlrpc_env * const env,
 	return ret;
 }
 
-/* This method returns the number of flows and if actual test has started */
+/**
+ * To get the daemons flow start status, UUID and num. of flows maintained 
+ * by the daemon.
+ *
+ * Flowgrind rpc server dispatch the request to get the daemon flow start
+ * status, UUID and if the flows are started, then number of flows maintained 
+ * by the daemon. After getting these information flowgrind rpc server encode 
+ * the information and send back the details to the controller through the 
+ * XML-RPC connection.
+ *
+ * @param[in,out] env XML-RPC environment object
+ * @param[in.out] param_array unused arg
+ * @param[in,out] user_data unused arg
+ * return xmlrpc_value XML-RPC value
+ */
 static xmlrpc_value * method_get_status(xmlrpc_env * const env,
 		   xmlrpc_value * const param_array,
 		   void * const user_data)

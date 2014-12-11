@@ -505,6 +505,7 @@ static void report_flow(struct flow* flow, int type)
 		(struct report*)malloc(sizeof(struct report));
 
 	report->id = flow->id;
+	report->endpoint = flow->endpoint;
 	report->type = type;
 
 	if (type == INTERVAL)

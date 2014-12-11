@@ -643,6 +643,7 @@ static void check_version(xmlrpc_client *rpc_client)
 	xmlrpc_value * resultP = 0;
 	char mismatch = 0;
 
+	/* call daemons by unique URL */
 	for (unsigned short j = 0; j < num_servers; j++) {
 		if (sigint_caught)
 			return;
@@ -656,6 +657,8 @@ static void check_version(xmlrpc_client *rpc_client)
 
 		die_if_fault_occurred(&rpc_env);
 
+		/* Decomposes the xmlrpc_value and extract the daemons data in
+		 * it into controller local variable*/
 		if (resultP) {
 			char* version;
 			int api_version;
@@ -673,6 +676,8 @@ static void check_version(xmlrpc_client *rpc_client)
 				warnx("node %s uses version %s",
 				      servers_info[j].server_url, version);
 			}
+			/* Store the daemons XML RPC API version, 
+			 * OS name and release in daemons info memory block*/
 			servers_info[j].api_version = api_version;
 			strncpy(servers_info[j].os_name, os_name, 256);
 			strncpy(servers_info[j].os_release, os_release, 256);
@@ -690,6 +695,10 @@ static struct daemon* set_unique_daemon_by_uuid(const char* server_uuid)
 {
 	unsigned short i=0;
 
+	/* Allocate memory block to daemons according to the the number of
+	 * servers in the controller flow option. Store the first daemons
+	 * UUID and set call state to zero.First daemon is used as reference
+	 * to avoid the daemons duplication by their UUID */
 	if(num_unique_daemon == 0){
 		unique_daemon = (struct daemon*)malloc((num_servers*sizeof(struct daemon)));
 		strcpy(unique_daemon[num_unique_daemon].uuid,server_uuid);
@@ -698,6 +707,12 @@ static struct daemon* set_unique_daemon_by_uuid(const char* server_uuid)
 		return &unique_daemon[num_unique_daemon-1];
 	}
 	
+	/* Compare the incoming daemons UUID with all daemons UUID in 
+	 * memory in order to prevent dupliclity in storing the daemons.
+	 * All daemons call state are intialized to zero. If the incoming 
+	 * daemon UUID is already present in the daemons list, then return 
+	 * existing daemon pointer to controller connection. This is because
+	 * a single daemons can run and maintain mutliple data connection */	
 	for (i = 0; i < num_unique_daemon; i++) {
 		if (strcmp(unique_daemon[i].uuid,server_uuid)){
 			if(i == num_unique_daemon-1){
@@ -722,12 +737,14 @@ static void check_idle(xmlrpc_client *rpc_client)
 	for (unsigned short j = 0; j < num_servers; j++) {
 		if (sigint_caught)
 			return;
-
+		/* call daemons by unique URL */
 		xmlrpc_client_call2f(&rpc_env, rpc_client,
 				     servers_info[j].server_url,
 				     "get_status", &resultP, "()");
 		die_if_fault_occurred(&rpc_env);
 
+		/* Decomposes the xmlrpc_value and extract the daemons data
+		 *  in it into controller local variable*/
 		if (resultP) {
 			int started;
 			int num_flows;
@@ -737,9 +754,14 @@ static void check_idle(xmlrpc_client *rpc_client)
 					       "{s:i,s:i,s:s,*}", "started",
 					       &started, "num_flows",
 					       &num_flows,"server_uuid",&server_uuid);
+
+			/* Determine the daemon in controller flow data by UUID
+			 * This prevent the daemons duplication*/
 			servers_info[j].daemon=set_unique_daemon_by_uuid(server_uuid);
 			die_if_fault_occurred(&rpc_env);
 
+			/* Daemon start status and number of flows is used to
+			 *  determine node idle status*/
 			if (started || num_flows)
 				critx("node %s is busy. %d flows, started=%d",
 				       servers_info[j].server_url, num_flows,
@@ -1089,9 +1111,10 @@ static void start_all_flows(xmlrpc_client *rpc_client)
 	gettime(&lastreport_end);
 	gettime(&lastreport_begin);
 	gettime(&now);
-
+	/* clear the daemon call state before calling the daemon from the controller */
 	clear_daemon_state();
 
+	/* All the flow endpoint daemons are started through flow rpc url connection */
 	for (unsigned short id = 0; id < copt.num_flows; id++) {
 		foreach(int *i, SOURCE, DESTINATION) {
 			if (sigint_caught)
@@ -1102,6 +1125,7 @@ static void start_all_flows(xmlrpc_client *rpc_client)
 				     cflow[id].endpoint[*i].server_info->server_url,
 				     "start_flows", &resultP, "({s:i})",
 				     "start_timestamp", now.tv_sec + 2);
+				/* After calling the daemon, it's call state is updated */
 				cflow[id].endpoint[*i].server_info->daemon->called=1;
 				die_if_fault_occurred(&rpc_env);
 				if (resultP)
@@ -1112,6 +1136,8 @@ static void start_all_flows(xmlrpc_client *rpc_client)
 
 	active_flows = copt.num_flows;
 
+	/* Reports are fetched from the daemons based on the
+	* report interval duration */
 	while (!sigint_caught) {
 		if ( time_diff_now(&lastreport_begin) <  copt.reporting_interval ) {
 			usleep(copt.reporting_interval - time_diff(&lastreport_begin,&lastreport_end) );
@@ -1132,6 +1158,8 @@ static void fetch_reports(xmlrpc_client *rpc_client)
 {
 
 	xmlrpc_value * resultP = 0;
+	
+	/* clear the daemon call state before calling the daemon from the controller */
 	clear_daemon_state();
 
 		for (unsigned short id = 0; id < copt.num_flows; id++) {
@@ -2012,11 +2040,14 @@ static struct server_info * get_server_info_by_url(const char* server_url,
 {
 	if(num_servers == 0)
 		servers_info = (struct server_info*)malloc((copt.num_flows*2)*sizeof(struct server_info));
-
+	
+	/* If we have already a daemon for this URL return a pointer to it */
 	for (unsigned short i = 0; i < num_servers; i++) {
 		if (!strcmp(servers_info[i].server_url, server_url))
 			return &servers_info[i];
 	}
+
+	/* didn't find anything, seems to be a new one */
 	memset(&servers_info[num_servers], 0, sizeof(struct server_info));
 	strcpy(servers_info[num_servers].server_url, server_url);
 	strcpy(servers_info[num_servers].server_name, server_name);
@@ -2244,7 +2275,7 @@ static void parse_host_option(const char* hostarg, int flow_id, int endpoint_id)
 
 	if (rc == -1)
 		critx("could not allocate memory for RPC URL");
-
+	/* Get flow endpoint server information for each flow*/
 	servers = get_server_info_by_url(url, rpc_address, port);
 	endpoint->server_info = servers;
 	strcpy(endpoint->test_address, arg);

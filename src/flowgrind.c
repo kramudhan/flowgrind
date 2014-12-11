@@ -1258,16 +1258,18 @@ static void fetch_reports(xmlrpc_client *rpc_client)
 	/* clear the daemon call state before calling the daemon from the controller */
 	clear_daemon_state();
 
-		for (unsigned short id = 0; id < copt.num_flows; id++) {
+	for (unsigned short id = 0; id < copt.num_flows; id++) {
 		foreach(int *i, SOURCE, DESTINATION) {
-			if(!cflow[id].endpoint[*i].server_info->daemon->called){
-		int array_size, has_more;
-		xmlrpc_value *rv = 0;
-		cflow[id].endpoint[*i].server_info->daemon->called = 1;
+			if(!cflow[id].endpoint[*i].server_info->daemon->called) {
+			int array_size, has_more;
+			xmlrpc_value *rv = 0;
+			cflow[id].endpoint[*i].server_info->daemon->called = 1;
 
 has_more_reports:
 
-		xmlrpc_client_call2f(&rpc_env, rpc_client, cflow[id].endpoint[*i].server_info->server_url,
+		xmlrpc_client_call2f(&rpc_env, 
+				rpc_client, 
+				cflow[id].endpoint[*i].server_info->server_url,
 			"get_reports", &resultP, "()");
 		if (rpc_env.fault_occurred) {
 			errx("XML-RPC fault: %s (%d)", rpc_env.fault_string,
@@ -1427,7 +1429,7 @@ has_more_reports:
 			goto has_more_reports;
 			}
 		}
-		}
+	}
 }
 
 /**
@@ -1530,7 +1532,7 @@ static void close_all_flows(void)
 
 			cflow[id].finished[*i] = 1;
 
-			if(!cflow[id].endpoint[*i].server_info->daemon->called){			
+			if(!cflow[id].endpoint[*i].server_info->daemon->called) {			
 			xmlrpc_env_init(&env);
 			xmlrpc_client_call2f(&env, client,
 					     cflow[id].endpoint[*i].server_info->server_url,

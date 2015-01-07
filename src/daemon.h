@@ -175,6 +175,7 @@ struct flow
 #define REQUEST_START_FLOWS 2
 #define REQUEST_STOP_FLOW 3
 #define REQUEST_GET_STATUS 4
+#define REQUEST_GET_UUID 5
 struct request
 {
 	char type;
@@ -230,12 +231,21 @@ struct request_stop_flow
 	int flow_id;
 };
 
+struct request_get_uuid
+{
+	struct request r;
+
+	char server_uuid[38];
+};
+
 struct request_get_status
 {
 	struct request r;
 
 	int started;
 	int num_flows;
+	/** Server UUID */
+	char server_uuid[38];	
 };
 
 pthread_t daemon_thread;
@@ -268,4 +278,5 @@ int set_flow_tcp_options(struct flow *flow);
  * Is called by the rpc server to feed in requests to the daemon. */
  int dispatch_request(struct request *request, int type);
 
+ void get_uuid_string(char *uuid_str);
 #endif /* _DAEMON_H_ */
